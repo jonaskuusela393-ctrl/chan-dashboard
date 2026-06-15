@@ -18,11 +18,14 @@ export default async function BoardsPage() {
       next: { revalidate: 300 },
     });
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
 
     const data: ApiResponse = await res.json();
+
     boards = Array.isArray(data?.boards) ? data.boards : [];
-  } catch (err) {
+  } catch {
     return (
       <div className="container">
         <BackButton />
@@ -53,8 +56,8 @@ export default async function BoardsPage() {
             marginTop: 20,
           }}
         >
-          {boards.map((b: Board) => {
-            const id = b?.board;
+          {boards.map((b) => {
+            const id = b.board;
             if (!id) return null;
 
             return (
@@ -71,7 +74,7 @@ export default async function BoardsPage() {
                 <div style={{ fontWeight: 600 }}>/{id}/</div>
 
                 <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  {b?.title || "No title"}
+                  {b.title || "No title"}
                 </div>
               </Link>
             );

@@ -12,9 +12,7 @@ export default function Home() {
         Select a module to continue
       </p>
 
-      {/* BUTTON ROW */}
       <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
-        
         <Link
           href="/4chan"
           className="card"
@@ -26,19 +24,6 @@ export default function Home() {
         >
           → 4chan viewer
         </Link>
-
-        <Link
-          href="/stream"
-          className="card"
-          style={{
-            padding: "12px 16px",
-            fontWeight: 600,
-            color: "#ff9ad1",
-          }}
-        >
-          🎥 Stream mode
-        </Link>
-
       </div>
     </div>
   );

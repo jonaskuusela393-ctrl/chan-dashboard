@@ -1,9 +1,5 @@
 import BackButton from "@/components/BackButton";
 
-type PageProps = {
-  params: { board: string; id: string };
-};
-
 type Post = {
   no?: number;
   tim?: number;
@@ -15,8 +11,12 @@ type ThreadData = {
   posts?: Post[];
 };
 
-export default async function ThreadPage({ params }: PageProps) {
-  const { board, id } = params;
+export default async function ThreadPage({
+  params,
+}: {
+  params: Promise<{ board: string; id: string }>;
+}) {
+  const { board, id } = await params;
 
   let data: ThreadData | null = null;
 
@@ -31,7 +31,7 @@ export default async function ThreadPage({ params }: PageProps) {
     if (!res.ok) throw new Error("Thread not found");
 
     data = await res.json();
-  } catch (err) {
+  } catch {
     return (
       <div className="container">
         <BackButton />
@@ -47,9 +47,7 @@ export default async function ThreadPage({ params }: PageProps) {
     );
   }
 
-  const posts: Post[] = Array.isArray(data?.posts)
-    ? data.posts
-    : [];
+  const posts: Post[] = Array.isArray(data?.posts) ? data.posts : [];
 
   return (
     <div className="container">
@@ -62,7 +60,7 @@ export default async function ThreadPage({ params }: PageProps) {
       {posts.length === 0 ? (
         <p>No posts found.</p>
       ) : (
-        posts.map((p: Post, index: number) => {
+        posts.map((p, index) => {
           const isOP = index === 0;
 
           const imageUrl =
@@ -72,7 +70,7 @@ export default async function ThreadPage({ params }: PageProps) {
 
           return (
             <div
-              key={p?.no ?? index}
+              key={p?.no ?? `${index}-${p?.tim ?? "no-tim"}`}
               className="card"
               style={{
                 borderColor: isOP ? "#666" : "#222",
