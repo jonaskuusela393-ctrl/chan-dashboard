@@ -1,19 +1,30 @@
 import BackButton from "@/components/BackButton";
 
-export default async function ThreadPage({
-  params,
-}: {
+type PageProps = {
   params: { board: string; id: string };
-}) {
+};
+
+type Post = {
+  no?: number;
+  tim?: number;
+  ext?: string;
+  com?: string;
+};
+
+type ThreadData = {
+  posts?: Post[];
+};
+
+export default async function ThreadPage({ params }: PageProps) {
   const { board, id } = params;
 
-  let data = null;
+  let data: ThreadData | null = null;
 
   try {
     const res = await fetch(
       `https://a.4cdn.org/${board}/thread/${id}.json`,
       {
-        next: { revalidate: 30 }, // cache refresh
+        next: { revalidate: 30 },
       }
     );
 
@@ -36,7 +47,9 @@ export default async function ThreadPage({
     );
   }
 
-  const posts = Array.isArray(data?.posts) ? data.posts : [];
+  const posts: Post[] = Array.isArray(data?.posts)
+    ? data.posts
+    : [];
 
   return (
     <div className="container">
@@ -49,7 +62,7 @@ export default async function ThreadPage({
       {posts.length === 0 ? (
         <p>No posts found.</p>
       ) : (
-        posts.map((p, index) => {
+        posts.map((p: Post, index: number) => {
           const isOP = index === 0;
 
           const imageUrl =

@@ -5,10 +5,20 @@ type PageProps = {
   params: { board: string };
 };
 
+type Thread = {
+  no?: number;
+  sub?: string;
+  replies?: number;
+};
+
+type CatalogPage = {
+  threads?: Thread[];
+};
+
 export default async function BoardPage({ params }: PageProps) {
   const { board } = params;
 
-  let data: any[] = [];
+  let data: CatalogPage[] = [];
 
   try {
     const res = await fetch(
@@ -35,7 +45,7 @@ export default async function BoardPage({ params }: PageProps) {
     );
   }
 
-  const threads = Array.isArray(data)
+  const threads: Thread[] = Array.isArray(data)
     ? data.flatMap((page) => page?.threads ?? [])
     : [];
 
@@ -56,7 +66,7 @@ export default async function BoardPage({ params }: PageProps) {
             marginTop: 16,
           }}
         >
-          {threads.map((t) => {
+          {threads.map((t: Thread) => {
             const id = t?.no;
             if (!id) return null;
 

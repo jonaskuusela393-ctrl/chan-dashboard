@@ -1,17 +1,26 @@
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
 
+type Board = {
+  board?: string;
+  title?: string;
+};
+
+type ApiResponse = {
+  boards?: Board[];
+};
+
 export default async function BoardsPage() {
-  let boards = [];
+  let boards: Board[] = [];
 
   try {
     const res = await fetch("https://a.4cdn.org/boards.json", {
-      next: { revalidate: 300 }, // 🔥 5 min cache (faster + stable)
+      next: { revalidate: 300 },
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const data = await res.json();
+    const data: ApiResponse = await res.json();
     boards = Array.isArray(data?.boards) ? data.boards : [];
   } catch (err) {
     return (
@@ -44,7 +53,7 @@ export default async function BoardsPage() {
             marginTop: 20,
           }}
         >
-          {boards.map((b) => {
+          {boards.map((b: Board) => {
             const id = b?.board;
             if (!id) return null;
 
