@@ -1,7 +1,11 @@
 import BackButton from "@/components/BackButton";
 
-export default async function ThreadPage({ params }) {
-  const { board, id } = await params;
+export default async function ThreadPage({
+  params,
+}: {
+  params: { board: string; id: string };
+}) {
+  const { board, id } = params;
 
   let data = null;
 
@@ -9,7 +13,7 @@ export default async function ThreadPage({ params }) {
     const res = await fetch(
       `https://a.4cdn.org/${board}/thread/${id}.json`,
       {
-        next: { revalidate: 30 }, // ⚡ fast refresh, low lag
+        next: { revalidate: 30 }, // cache refresh
       }
     );
 
@@ -21,7 +25,9 @@ export default async function ThreadPage({ params }) {
       <div className="container">
         <BackButton />
 
-        <h1>/{board}/ — thread {id}</h1>
+        <h1>
+          /{board}/ — thread {id}
+        </h1>
 
         <p style={{ color: "red" }}>
           Failed to load thread. It may be deleted or archived.
@@ -59,12 +65,10 @@ export default async function ThreadPage({ params }) {
                 borderColor: isOP ? "#666" : "#222",
               }}
             >
-              {/* HEADER */}
               <div className="meta">
                 No.{p?.no ?? "?"} {isOP && "• OP"}
               </div>
 
-              {/* BODY */}
               <div
                 className="post-body"
                 dangerouslySetInnerHTML={{
@@ -72,7 +76,6 @@ export default async function ThreadPage({ params }) {
                 }}
               />
 
-              {/* MEDIA */}
               {imageUrl && (
                 <a
                   href={imageUrl}

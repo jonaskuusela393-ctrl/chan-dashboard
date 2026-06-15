@@ -1,8 +1,12 @@
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
 
-export default async function BoardPage({ params }) {
-  const { board } = await params;
+export default async function BoardPage({
+  params,
+}: {
+  params: { board: string };
+}) {
+  const { board } = params;
 
   let data = [];
 
@@ -10,7 +14,7 @@ export default async function BoardPage({ params }) {
     const res = await fetch(
       `https://a.4cdn.org/${board}/catalog.json`,
       {
-        next: { revalidate: 60 }, // ⚡ cache 1 min (big speed boost)
+        next: { revalidate: 60 }, // cache 1 min
       }
     );
 
