@@ -1,20 +1,20 @@
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
 
-export default async function BoardPage({
-  params,
-}: {
+type PageProps = {
   params: { board: string };
-}) {
+};
+
+export default async function BoardPage({ params }: PageProps) {
   const { board } = params;
 
-  let data = [];
+  let data: any[] = [];
 
   try {
     const res = await fetch(
       `https://a.4cdn.org/${board}/catalog.json`,
       {
-        next: { revalidate: 60 }, // cache 1 min
+        next: { revalidate: 60 },
       }
     );
 
@@ -27,9 +27,7 @@ export default async function BoardPage({
     return (
       <div className="container">
         <BackButton />
-
         <h1>/{board}/</h1>
-
         <p style={{ color: "red" }}>
           Failed to load threads. The board may not exist or 4chan API is down.
         </p>
