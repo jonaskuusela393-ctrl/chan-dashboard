@@ -5,34 +5,23 @@ import { useRouter } from "next/navigation";
 export default function StreamPage() {
   const router = useRouter();
 
-  const channel = "YOUR_CHANNEL_NAME"; // change this
+  const channel = "BestestCreature"; // change this
 
   return (
-    <div
-      style={{
-        background: "#000",
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
+    <div style={styles.page}>
       {/* TOP BAR */}
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          left: 10,
-          display: "flex",
-          gap: 10,
-        }}
-      >
-        <button
-          onClick={() => router.back()}
-          style={btnStyle}
-        >
+      <div style={styles.topBar}>
+        <button onClick={() => router.back()} style={styles.btn}>
           ← Back
+        </button>
+
+        <button
+          onClick={() =>
+            document.documentElement.requestFullscreen?.()
+          }
+          style={styles.btn}
+        >
+          ⛶ Fullscreen
         </button>
       </div>
 
@@ -41,23 +30,47 @@ export default function StreamPage() {
         src={`https://player.kick.com/${channel}`}
         allow="autoplay; fullscreen"
         allowFullScreen
-        style={{
-          width: "90vw",
-          height: "80vh",
-          border: "1px solid #222",
-          borderRadius: "8px",
-          background: "#000",
-        }}
+        style={styles.iframe}
       />
     </div>
   );
 }
 
-const btnStyle = {
-  padding: "6px 10px",
-  background: "#111",
-  color: "#fff",
-  border: "1px solid #333",
-  cursor: "pointer",
-  fontFamily: "inherit",
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    background: "#000",
+    minHeight: "100vh",
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+  },
+
+  topBar: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    display: "flex",
+    gap: 10,
+    zIndex: 10,
+  },
+
+  btn: {
+    padding: "8px 12px",
+    background: "#111",
+    color: "#fff",
+    border: "1px solid #333",
+    cursor: "pointer",
+    fontFamily: "inherit",
+  },
+
+  iframe: {
+    width: "95vw",
+    height: "90vh",
+    border: "1px solid #222",
+    borderRadius: "8px",
+    background: "#000",
+  },
 };
