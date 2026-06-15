@@ -1,0 +1,74 @@
+import Link from "next/link";
+import BackButton from "@/components/BackButton";
+
+export default async function BoardsPage() {
+  let boards = [];
+
+  try {
+    const res = await fetch("https://a.4cdn.org/boards.json", {
+      next: { revalidate: 300 }, // 🔥 5 min cache (faster + stable)
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+    boards = Array.isArray(data?.boards) ? data.boards : [];
+  } catch (err) {
+    return (
+      <div className="container">
+        <BackButton />
+
+        <h1>4chan Boards</h1>
+
+        <p style={{ color: "red" }}>
+          Failed to load boards. API may be down or blocked.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container">
+      <BackButton />
+
+      <h1>4chan Boards</h1>
+
+      {boards.length === 0 ? (
+        <p>No boards available.</p>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+            gap: 10,
+            marginTop: 20,
+          }}
+        >
+          {boards.map((b) => {
+            const id = b?.board;
+            if (!id) return null;
+
+            return (
+              <Link
+                key={id}
+                href={`/4chan/${id}`}
+                className="card"
+                style={{
+                  display: "block",
+                  textDecoration: "none",
+                  color: "inherit",
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>/{id}/</div>
+
+                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                  {b?.title || "No title"}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
