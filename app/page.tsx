@@ -24,6 +24,18 @@ export default function Home() {
         >
           → 4chan viewer
         </Link>
+
+        <Link
+          href="/strim"
+          className="card"
+          style={{
+            padding: "12px 16px",
+            fontWeight: 600,
+            color: "#9affb2",
+          }}
+        >
+          🎮 Stream / Kick module
+        </Link>
       </div>
     </div>
   );
