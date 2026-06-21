@@ -1,31 +1,17 @@
 import BackButton from "@/components/BackButton";
 
 type Props = {
-  searchParams?: { url?: string };
+  searchParams: {
+    url?: string;
+  };
 };
 
-function getEmbed(url: string) {
-  // YouTube embed
-  if (url.includes("youtube.com") || url.includes("youtu.be")) {
-    const id =
-      url.split("v=")[1]?.split("&")[0] ||
-      url.split("/").pop();
-
-    return `https://www.youtube.com/embed/${id}`;
-  }
-
-  // Kick (direct page, may or may not embed)
-  if (url.includes("kick.com")) {
-    return url;
-  }
-
-  return url;
-}
-
 export default function PlayPage({ searchParams }: Props) {
-  const raw = searchParams?.url;
+  const url = searchParams?.url;
 
-  if (!raw) {
+  console.log("DEBUG URL:", url); // <- check browser console
+
+  if (!url) {
     return (
       <div className="container">
         <BackButton />
@@ -34,8 +20,7 @@ export default function PlayPage({ searchParams }: Props) {
     );
   }
 
-  const url = decodeURIComponent(raw);
-  const embed = getEmbed(url);
+  const decoded = decodeURIComponent(url);
 
   return (
     <div className="container">
@@ -53,26 +38,11 @@ export default function PlayPage({ searchParams }: Props) {
         }}
       >
         <iframe
-          src={embed}
+          src={decoded}
           style={{ width: "100%", height: "100%", border: "none" }}
           allow="autoplay; fullscreen"
           allowFullScreen
         />
-      </div>
-
-      {/* fallback link */}
-      <div style={{ marginTop: 10 }}>
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            color: "#9ad1ff",
-            fontSize: 12,
-          }}
-        >
-          Open original stream
-        </a>
       </div>
     </div>
   );
