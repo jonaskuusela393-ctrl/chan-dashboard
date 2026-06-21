@@ -1,37 +1,62 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import BackButton from "@/components/BackButton";
 
-type Stream = {
-  id: string;
-  name: string;
-  category: string;
-};
-
-const STREAMS: Stream[] = [
-  { id: "xqc", name: "xQc", category: "Just Chatting" },
-  { id: "adin", name: "Adin Ross", category: "Just Chatting" },
-  { id: "gamer1", name: "Pro Gamer", category: "Gaming" },
-  { id: "music1", name: "Live DJ", category: "Music" },
-  { id: "irl1", name: "IRL Walker", category: "IRL" },
-];
-
-const CATEGORIES = ["All", "Just Chatting", "Gaming", "Music", "IRL"];
+function isValidUrl(value: string) {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export default function StrimPage() {
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("All");
+  const [url, setUrl] = useState("");
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const router = useRouter();
 
-  const filtered = useMemo(() => {
-    return STREAMS.filter((s) => {
-      const matchesSearch = s.name.toLowerCase().includes(query.toLowerCase());
-      const matchesCategory =
-        category === "All" || s.category === category;
-      return matchesSearch && matchesCategory;
-    });
-  }, [query, category]);
+  // load safely
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("favorites");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setFavorites(parsed);
+      }
+    } catch {
+      setFavorites([]);
+    }
+  }, []);
+
+  function save(list: string[]) {
+    setFavorites(list);
+    localStorage.setItem("favorites", JSON.stringify(list));
+  }
+
+  function play(link: string) {
+    const clean = link.trim();
+
+    if (!clean || !isValidUrl(clean)) return;
+
+    router.push(`/strim/play?url=${encodeURIComponent(clean)}`);
+  }
+
+  function addFavorite() {
+    const clean = url.trim();
+
+    if (!clean || !isValidUrl(clean)) return;
+    if (favorites.includes(clean)) return;
+
+    save([...favorites, clean]);
+    setUrl("");
+  }
+
+  function removeFavorite(item: string) {
+    save(favorites.filter((f) => f !== item));
+  }
 
   return (
     <div className="container">
@@ -39,63 +64,64 @@ export default function StrimPage() {
 
       <h1>Strim 🎥</h1>
 
-      {/* SEARCH */}
+      {/* INPUT */}
       <input
-        placeholder="Search streams..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="Paste Kick / YouTube URL"
         style={{
           width: "100%",
-          padding: "10px",
+          padding: 10,
           marginTop: 10,
-          marginBottom: 10,
           background: "#111",
           border: "1px solid #333",
           color: "white",
         }}
       />
 
-      {/* CATEGORY BAR */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 15, flexWrap: "wrap" }}>
-        {CATEGORIES.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategory(c)}
-            style={{
-              padding: "6px 10px",
-              border: "1px solid #333",
-              background: category === c ? "#222" : "transparent",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            {c}
-          </button>
-        ))}
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+        <button className="card" onClick={() => play(url)}>
+          Play
+        </button>
+
+        <button className="card" onClick={addFavorite}>
+          ⭐ Add Favorite
+        </button>
       </div>
 
-      {/* GRID */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-          gap: 10,
-        }}
-      >
-        {filtered.map((stream) => (
-          <Link
-            key={stream.id}
-            href={`/strim/${stream.id}`}
+      {/* FAVORITES */}
+      <h3 style={{ marginTop: 20 }}>Favorites</h3>
+
+      {favorites.length === 0 ? (
+        <p style={{ opacity: 0.6 }}>No saved streams</p>
+      ) : (
+        favorites.map((f) => (
+          <div
+            key={f}
             className="card"
-            style={{ display: "block" }}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 10,
+            }}
           >
-            <div style={{ fontWeight: 700 }}>{stream.name}</div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>
-              {stream.category}
+            <span style={{ fontSize: 12, wordBreak: "break-all" }}>
+              {f}
+            </span>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="card" onClick={() => play(f)}>
+                ▶
+              </button>
+
+              <button className="card" onClick={() => removeFavorite(f)}>
+                ✕
+              </button>
             </div>
-          </Link>
-        ))}
-      </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }
