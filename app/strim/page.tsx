@@ -18,7 +18,6 @@ export default function StrimPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const router = useRouter();
 
-  // load safely
   useEffect(() => {
     try {
       const saved = localStorage.getItem("favorites");
@@ -38,7 +37,6 @@ export default function StrimPage() {
 
   function play(link: string) {
     const clean = link.trim();
-
     if (!clean || !isValidUrl(clean)) return;
 
     router.push(`/strim/play?url=${encodeURIComponent(clean)}`);
@@ -46,7 +44,6 @@ export default function StrimPage() {
 
   function addFavorite() {
     const clean = url.trim();
-
     if (!clean || !isValidUrl(clean)) return;
     if (favorites.includes(clean)) return;
 
@@ -79,12 +76,31 @@ export default function StrimPage() {
         }}
       />
 
+      {/* BUTTONS */}
       <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-        <button className="card" onClick={() => play(url)}>
+        <button
+          onClick={() => play(url)}
+          style={{
+            padding: "8px 12px",
+            background: "#111",
+            border: "1px solid #333",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
           Play
         </button>
 
-        <button className="card" onClick={addFavorite}>
+        <button
+          onClick={addFavorite}
+          style={{
+            padding: "8px 12px",
+            background: "#111",
+            border: "1px solid #333",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
           ⭐ Add Favorite
         </button>
       </div>
@@ -111,11 +127,29 @@ export default function StrimPage() {
             </span>
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="card" onClick={() => play(f)}>
+              <button
+                onClick={() => play(f)}
+                style={{
+                  padding: "6px 10px",
+                  background: "#111",
+                  border: "1px solid #333",
+                  color: "white",
+                  cursor: "pointer",
+                }}
+              >
                 ▶
               </button>
 
-              <button className="card" onClick={() => removeFavorite(f)}>
+              <button
+                onClick={() => removeFavorite(f)}
+                style={{
+                  padding: "6px 10px",
+                  background: "#111",
+                  border: "1px solid #333",
+                  color: "white",
+                  cursor: "pointer",
+                }}
+              >
                 ✕
               </button>
             </div>
