@@ -1,5 +1,7 @@
-import Link from "next/link";
 import BackButton from "@/components/BackButton";
+import { sql } from "@/lib/db";
+import { getUser } from "@/lib/getUser";
+import BoardClient from "./BoardClient";
 
 type Thread = {
   no?: number;
@@ -30,7 +32,7 @@ export default async function BoardPage({
     }
 
     data = await res.json();
-  } catch (err) {
+  } catch {
     return (
       <div className="container">
         <BackButton />
@@ -42,54 +44,36 @@ export default async function BoardPage({
     );
   }
 
+  // =========================
+  // 🔥 PERSONAL HIDE SYSTEM
+  // =========================
+  const user = await getUser();
+
+  let hiddenSet = new Set<string>();
+
+  if (user) {
+    const hidden = await sql`
+      SELECT item_id FROM hidden_items
+      WHERE user_id = ${user.id}
+      AND item_type = 'thread'
+      AND board = ${board}
+    `;
+
+    hiddenSet = new Set(hidden.map((h) => String(h.item_id)));
+  }
+
   const threads: Thread[] = Array.isArray(data)
-    ? data.flatMap((page) => page?.threads ?? [])
+    ? data
+        .flatMap((page) => page?.threads ?? [])
+        .filter((t) => t?.no && !hiddenSet.has(String(t.no)))
     : [];
 
   return (
     <div className="container">
       <BackButton />
-
       <h1>/{board}/</h1>
 
-      {threads.length === 0 ? (
-        <p>No threads found.</p>
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-            gap: 12,
-            marginTop: 16,
-          }}
-        >
-          {threads.map((t) => {
-            const id = t?.no;
-            if (!id) return null;
-
-            return (
-              <Link
-                key={id}
-                href={`/4chan/${board}/thread/${id}`}
-                className="card"
-                style={{
-                  display: "block",
-                  textDecoration: "none",
-                  color: "inherit",
-                }}
-              >
-                <div className="title">
-                  {t?.sub?.trim() || "No title"}
-                </div>
-
-                <div className="meta">
-                  replies: {t?.replies ?? 0}
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      <BoardClient board={board} threads={threads} />
     </div>
   );
 }
