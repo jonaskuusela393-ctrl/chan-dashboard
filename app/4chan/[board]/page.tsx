@@ -10,8 +10,8 @@ type Thread = {
 };
 
 type CatalogPage = {
-  page: number;
-  threads: Thread[];
+  page?: number;
+  threads?: Thread[];
 };
 
 export default async function BoardPage({
@@ -21,6 +21,9 @@ export default async function BoardPage({
 }) {
   const board = params?.board;
 
+  // =========================
+  // VALIDATE BOARD
+  // =========================
   if (!board || typeof board !== "string") {
     return (
       <div className="container">
@@ -31,7 +34,7 @@ export default async function BoardPage({
   }
 
   // =========================
-  // FETCH 4CHAN (SAFE)
+  // FETCH 4CHAN (ROBUST)
   // =========================
   let data: CatalogPage[] = [];
 
@@ -51,21 +54,24 @@ export default async function BoardPage({
     const text = await res.text();
 
     if (!res.ok) {
-      throw new Error(`4chan HTTP ${res.status}: ${text.slice(0, 120)}`);
+      throw new Error(
+        `4chan HTTP ${res.status}: ${text.slice(0, 120)}`
+      );
     }
 
-    let json;
+    let json: unknown;
+
     try {
       json = JSON.parse(text);
     } catch {
-      throw new Error("4chan returned non-JSON (blocked or HTML)");
+      throw new Error("4chan returned invalid JSON (likely HTML/block)");
     }
 
     if (!Array.isArray(json)) {
-      throw new Error("Invalid 4chan catalog format");
+      throw new Error("Invalid 4chan catalog structure");
     }
 
-    data = json;
+    data = json as CatalogPage[];
   } catch (err) {
     console.error("4chan fetch failed:", err);
 
@@ -74,16 +80,16 @@ export default async function BoardPage({
         <BackButton />
         <h1>/{board}/</h1>
         <p style={{ color: "red" }}>
-          Failed to load threads (API blocked or unavailable)
+          Failed to load threads (API unavailable or blocked)
         </p>
       </div>
     );
   }
 
   // =========================
-  // DB (SAFE - DOES NOT BREAK PAGE)
+  // DB (NON-CRITICAL)
   // =========================
-  let hiddenSet = new Set<string>();
+  const hiddenSet = new Set<string>();
 
   try {
     const user = await getUser();
@@ -106,20 +112,33 @@ export default async function BoardPage({
   }
 
   // =========================
-  // FLATTEN THREADS SAFELY
+  // SAFE FLATTEN (FIXED)
   // =========================
   const threads = Array.isArray(data)
     ? data
-        .flatMap((p) => p?.threads ?? [])
-        .filter((t) => t?.no && !hiddenSet.has(String(t.no)))
+        .flatMap((p) =>
+          Array.isArray(p?.threads) ? p.threads : []
+        )
+        .filter(
+          (t) =>
+            t &&
+            typeof t.no === "number" &&
+            !hiddenSet.has(String(t.no))
+        )
     : [];
 
+  // =========================
+  // FINAL RENDER
+  // =========================
   return (
     <div className="container">
       <BackButton />
       <h1>/{board}/</h1>
 
-      <BoardClient board={board} threads={threads} />
+      <BoardClient
+        board={board}
+        threads={Array.isArray(threads) ? threads : []}
+      />
     </div>
   );
 }

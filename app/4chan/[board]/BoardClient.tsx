@@ -16,7 +16,11 @@ export default function BoardClient({
   board: string;
   threads: Thread[];
 }) {
-  const [threads, setThreads] = useState<Thread[]>(initialThreads);
+  // ✅ GUARANTEE ARRAY SAFETY
+  const [threads, setThreads] = useState<Thread[]>(
+    Array.isArray(initialThreads) ? initialThreads : []
+  );
+
   const [loadingId, setLoadingId] = useState<number | null>(null);
 
   async function hideThread(threadId?: number) {
@@ -27,8 +31,12 @@ export default function BoardClient({
     // snapshot (safe rollback)
     const previous = threads;
 
-    // optimistic update
-    setThreads((prev) => prev.filter((t) => t.no !== threadId));
+    // optimistic update (safe)
+    setThreads((prev) =>
+      Array.isArray(prev)
+        ? prev.filter((t) => t?.no !== threadId)
+        : []
+    );
 
     try {
       const res = await fetch("/api/hide", {
@@ -49,8 +57,8 @@ export default function BoardClient({
     } catch (err) {
       console.error("Hide error:", err);
 
-      // rollback
-      setThreads(previous);
+      // rollback (safe)
+      setThreads(Array.isArray(previous) ? previous : []);
     } finally {
       setLoadingId(null);
     }
@@ -66,55 +74,58 @@ export default function BoardClient({
         marginTop: 16,
       }}
     >
-      {threads.map((t) => {
-        if (typeof t.no !== "number") return null;
+      {Array.isArray(threads) &&
+        threads
+          .filter((t) => t && typeof t.no === "number")
+          .map((t) => {
+            const isLoading = loadingId === t.no;
 
-        const isLoading = loadingId === t.no;
+            return (
+              <div
+                key={t.no}
+                className="card"
+                style={{
+                  position: "relative",
+                  opacity: isLoading ? 0.7 : 1,
+                }}
+              >
+                <Link
+                  href={`/4chan/${board}/thread/${t.no}`}
+                  style={{
+                    textDecoration: "none",
+                    color: "inherit",
+                    pointerEvents: isLoading ? "none" : "auto",
+                  }}
+                >
+                  <div className="title">
+                    {typeof t.sub === "string" && t.sub.trim()
+                      ? t.sub.trim()
+                      : "No title"}
+                  </div>
 
-        return (
-          <div
-            key={t.no}
-            className="card"
-            style={{
-              position: "relative",
-              opacity: isLoading ? 0.7 : 1,
-            }}
-          >
-            <Link
-              href={`/4chan/${board}/thread/${t.no}`}
-              style={{
-                textDecoration: "none",
-                color: "inherit",
-                pointerEvents: isLoading ? "none" : "auto",
-              }}
-            >
-              <div className="title">
-                {t.sub?.trim() || "No title"}
+                  <div className="meta">
+                    replies: {typeof t.replies === "number" ? t.replies : 0}
+                  </div>
+                </Link>
+
+                <button
+                  onClick={() => hideThread(t.no)}
+                  disabled={isLoading}
+                  style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    background: "#111",
+                    border: "1px solid #333",
+                    color: "white",
+                    cursor: isLoading ? "not-allowed" : "pointer",
+                    opacity: isLoading ? 0.5 : 1,
+                  }}
+                >
+                  {isLoading ? "Hiding..." : "Hide"}
+                </button>
               </div>
-
-              <div className="meta">
-                replies: {t.replies ?? 0}
-              </div>
-            </Link>
-
-            <button
-              onClick={() => hideThread(t.no)}
-              disabled={isLoading}
-              style={{
-                marginTop: 8,
-                fontSize: 12,
-                background: "#111",
-                border: "1px solid #333",
-                color: "white",
-                cursor: isLoading ? "not-allowed" : "pointer",
-                opacity: isLoading ? 0.5 : 1,
-              }}
-            >
-              {isLoading ? "Hiding..." : "Hide"}
-            </button>
-          </div>
-        );
-      })}
+            );
+          })}
     </div>
   );
 }
