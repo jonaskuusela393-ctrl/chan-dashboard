@@ -19,71 +19,94 @@ export default async function BoardPage({
 }: {
   params: { board: string };
 }) {
-  const { board } = params;
+  const board = params?.board;
 
+  if (!board || typeof board !== "string") {
+    return (
+      <div className="container">
+        <BackButton />
+        <p>Invalid board</p>
+      </div>
+    );
+  }
+
+  // =========================
+  // FETCH 4CHAN (SAFE)
+  // =========================
   let data: CatalogPage[] = [];
 
-  // ✅ SAFE FETCH
   try {
     const res = await fetch(
       `https://a.4cdn.org/${board}/catalog.json`,
       {
         next: { revalidate: 60 },
         headers: {
-          "User-Agent": "Mozilla/5.0",
-          Accept: "application/json",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+          Accept: "application/json,text/plain,*/*",
         },
       }
     );
 
+    const text = await res.text();
+
     if (!res.ok) {
-      throw new Error(`4chan HTTP ${res.status}`);
+      throw new Error(`4chan HTTP ${res.status}: ${text.slice(0, 120)}`);
     }
 
-    const json = await res.json();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      throw new Error("4chan returned non-JSON (blocked or HTML)");
+    }
 
-    // 🔥 IMPORTANT: validate shape
     if (!Array.isArray(json)) {
-      throw new Error("Invalid 4chan response format");
+      throw new Error("Invalid 4chan catalog format");
     }
 
     data = json;
   } catch (err) {
-    console.error("Board fetch failed:", err);
+    console.error("4chan fetch failed:", err);
 
     return (
       <div className="container">
         <BackButton />
         <h1>/{board}/</h1>
         <p style={{ color: "red" }}>
-          Failed to load threads. 4chan API error or blocked.
+          Failed to load threads (API blocked or unavailable)
         </p>
       </div>
     );
   }
 
   // =========================
-  // DB USER
+  // DB (SAFE - DOES NOT BREAK PAGE)
   // =========================
-  const user = await getUser();
-  const hiddenSet = new Set<string>();
+  let hiddenSet = new Set<string>();
 
-  if (user) {
-    const hidden = await sql`
-      SELECT item_id
-      FROM hidden_items
-      WHERE user_id = ${user.id}
-        AND item_type = 'thread'
-        AND board = ${board}
-    `;
+  try {
+    const user = await getUser();
 
-    for (const h of hidden as { item_id: string | number }[]) {
-      hiddenSet.add(String(h.item_id));
+    if (user) {
+      const hidden = await sql`
+        SELECT item_id
+        FROM hidden_items
+        WHERE user_id = ${user.id}
+          AND item_type = 'thread'
+          AND board = ${board}
+      `;
+
+      for (const h of hidden as { item_id: string | number }[]) {
+        hiddenSet.add(String(h.item_id));
+      }
     }
+  } catch (e) {
+    console.warn("DB failed but continuing page:", e);
   }
 
   // =========================
-  // SAFE FLATTEN
+  // FLATTEN THREADS SAFELY
   // =========================
   const threads = Array.isArray(data)
     ? data
