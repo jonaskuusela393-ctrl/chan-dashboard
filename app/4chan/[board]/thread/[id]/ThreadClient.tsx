@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import sanitizeHtml from "sanitize-html";
-
-type Post = {
-  no: number;
-  tim?: number;
-  ext?: string;
-  com?: string;
-};
+import type { Post } from "@/app/types/chan";
 
 export default function ThreadClient({
   board,
@@ -23,7 +17,7 @@ export default function ThreadClient({
   async function hidePost(postId: number) {
     setLoadingId(postId);
 
-    const previous = posts;
+    const previous = [...posts];
 
     setPosts((prev) => prev.filter((p) => p.no !== postId));
 
@@ -49,8 +43,8 @@ export default function ThreadClient({
 
   return (
     <div>
-      {posts.map((p) => {
-        const isOP = p.no === posts[0]?.no;
+      {posts.map((p, index) => {
+        const isOP = index === 0;
 
         const imageUrl =
           p.tim && p.ext
@@ -75,11 +69,7 @@ export default function ThreadClient({
             />
 
             {imageUrl && (
-              <a
-                href={imageUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href={imageUrl} target="_blank" rel="noreferrer">
                 <img
                   src={imageUrl}
                   className="post-img"

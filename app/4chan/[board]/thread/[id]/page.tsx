@@ -1,12 +1,6 @@
 import BackButton from "@/components/BackButton";
 import ThreadClient from "./ThreadClient";
-
-type Post = {
-  no?: number;
-  tim?: number;
-  ext?: string;
-  com?: string;
-};
+import type { Post } from "@/app/types/chan";
 
 type ThreadData = {
   posts?: Post[];
@@ -33,8 +27,11 @@ export default async function ThreadPage({
 
     const data: ThreadData = await res.json();
 
+    // 🔥 CRITICAL FIX: filter invalid posts safely
     const posts: Post[] = Array.isArray(data?.posts)
-      ? data.posts
+      ? data.posts.filter(
+          (p): p is Post => typeof p.no === "number"
+        )
       : [];
 
     return (
