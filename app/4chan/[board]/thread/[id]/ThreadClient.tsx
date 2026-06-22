@@ -4,9 +4,18 @@ import { useState } from "react";
 import sanitizeHtml from "sanitize-html";
 import type { Post } from "@/app/types/chan";
 
+type ThreadPost = Post & {
+  no: number;
+  sub?: string;
+  com?: string;
+  tim?: number;
+  ext?: string;
+  filename?: string;
+};
+
 type ThreadClientProps = {
   board: string;
-  initialPosts: Post[];
+  initialPosts: ThreadPost[];
 };
 
 function cleanHtml(html: string) {
@@ -44,7 +53,7 @@ export default function ThreadClient({
   board,
   initialPosts,
 }: ThreadClientProps) {
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [posts, setPosts] = useState<ThreadPost[]>(initialPosts);
   const [loadingId, setLoadingId] = useState<number | null>(null);
 
   async function hidePost(postId: number) {
@@ -68,7 +77,8 @@ export default function ThreadClient({
       });
 
       if (!res.ok) {
-        throw new Error(`Failed to hide post: ${res.status}`);
+        const errorText = await res.text();
+        throw new Error(`Failed to hide post: ${res.status} ${errorText}`);
       }
     } catch (err) {
       console.error("Hide post failed:", err);
