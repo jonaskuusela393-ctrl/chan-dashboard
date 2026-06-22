@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   req: Request,
-  { params }: { params: { board: string } }
+  context: { params: Promise<{ board: string }> }
 ) {
-  const board = params?.board;
+  const { board } = await context.params;
 
   if (!board) {
     return NextResponse.json(
@@ -40,8 +40,6 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error("Proxy error:", err);
-
     return NextResponse.json(
       { error: "Failed to fetch 4chan API" },
       { status: 500 }
