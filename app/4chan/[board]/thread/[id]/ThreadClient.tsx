@@ -55,11 +55,11 @@ export default function ThreadClient({
 }: ThreadClientProps) {
   const [posts, setPosts] = useState<ThreadPost[]>(initialPosts);
   const [loadingId, setLoadingId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function hidePost(postId: number) {
     setLoadingId(postId);
-
-    const previous = posts;
+    setError(null);
 
     setPosts((prev) => prev.filter((p) => p.no !== postId));
 
@@ -82,18 +82,39 @@ export default function ThreadClient({
       }
     } catch (err) {
       console.error("Hide post failed:", err);
-      setPosts(previous);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to save hidden post."
+      );
     } finally {
       setLoadingId(null);
     }
   }
 
   if (!posts.length) {
-    return <p>No posts found.</p>;
+    return (
+      <div>
+        {error && (
+          <p style={{ color: "red" }}>
+            {error}
+          </p>
+        )}
+
+        <p>No posts found.</p>
+      </div>
+    );
   }
 
   return (
     <div>
+      {error && (
+        <p style={{ color: "red" }}>
+          {error}
+        </p>
+      )}
+
       {posts.map((p, index) => {
         const isOP = index === 0;
 
