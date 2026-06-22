@@ -23,6 +23,7 @@ export default async function BoardPage({
 
   let data: CatalogPage[] = [];
 
+  // ✅ SAFE FETCH
   try {
     const res = await fetch(
       `https://a.4cdn.org/${board}/catalog.json`,
@@ -39,7 +40,14 @@ export default async function BoardPage({
       throw new Error(`4chan HTTP ${res.status}`);
     }
 
-    data = await res.json();
+    const json = await res.json();
+
+    // 🔥 IMPORTANT: validate shape
+    if (!Array.isArray(json)) {
+      throw new Error("Invalid 4chan response format");
+    }
+
+    data = json;
   } catch (err) {
     console.error("Board fetch failed:", err);
 
@@ -54,6 +62,9 @@ export default async function BoardPage({
     );
   }
 
+  // =========================
+  // DB USER
+  // =========================
   const user = await getUser();
   const hiddenSet = new Set<string>();
 
@@ -66,14 +77,19 @@ export default async function BoardPage({
         AND board = ${board}
     `;
 
-    for (const h of hidden as any[]) {
+    for (const h of hidden as { item_id: string | number }[]) {
       hiddenSet.add(String(h.item_id));
     }
   }
 
-  const threads = data
-    .flatMap((p) => p.threads ?? [])
-    .filter((t) => t?.no && !hiddenSet.has(String(t.no)));
+  // =========================
+  // SAFE FLATTEN
+  // =========================
+  const threads = Array.isArray(data)
+    ? data
+        .flatMap((p) => p?.threads ?? [])
+        .filter((t) => t?.no && !hiddenSet.has(String(t.no)))
+    : [];
 
   return (
     <div className="container">

@@ -1,49 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(
-  req: NextRequest,
-  context: { params: Promise<{ board: string }> }
-) {
-  const { board } = await context.params;
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const board = url.pathname.split("/").at(-1);
 
   if (!board) {
-    return NextResponse.json(
-      { error: "Missing board" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing board" }, { status: 400 });
   }
 
-  const url = `https://a.4cdn.org/${board}/catalog.json`;
-
-  try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        Accept: "application/json",
-      },
+  const res = await fetch(
+    `https://a.4cdn.org/${board}/catalog.json`,
+    {
       cache: "no-store",
-    });
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: `4chan HTTP ${res.status}` },
-        { status: res.status }
-      );
     }
+  );
 
-    const data = await res.json();
+  const data = await res.json();
 
-    return NextResponse.json(data, {
-      headers: {
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
-      },
-    });
-  } catch (err) {
-    console.error("4chan proxy error:", err);
-
-    return NextResponse.json(
-      { error: "Failed to fetch 4chan API" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(data);
 }
