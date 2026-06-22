@@ -1,5 +1,5 @@
 import BackButton from "@/components/BackButton";
-import { sql } from "@/lib/db";
+import { getSql } from "@/lib/db";
 import { getUser } from "@/lib/getUser";
 import BoardClient from "./BoardClient";
 
@@ -23,14 +23,14 @@ export default async function BoardPage({
 
   let data: CatalogPage[] = [];
 
+  // ✅ USE YOUR API PROXY (NOT 4chan DIRECT)
   try {
-    const res = await fetch(
-      `https://a.4cdn.org/${board}/catalog.json`,
-      { next: { revalidate: 60 } }
-    );
+    const res = await fetch(`/api/4chan/${board}`, {
+      next: { revalidate: 60 },
+    });
 
     if (!res.ok) {
-      throw new Error(`4chan HTTP ${res.status}`);
+      throw new Error(`API HTTP ${res.status}`);
     }
 
     data = await res.json();
@@ -42,13 +42,16 @@ export default async function BoardPage({
         <BackButton />
         <h1>/{board}/</h1>
         <p style={{ color: "red" }}>
-          Failed to load threads. 4chan API error or blocked.
+          Failed to load threads. API proxy error or server issue.
         </p>
       </div>
     );
   }
 
+  // ✅ DB (Option B)
+  const sql = getSql();
   const user = await getUser();
+
   const hiddenSet = new Set<string>();
 
   if (user) {
@@ -65,9 +68,10 @@ export default async function BoardPage({
     }
   }
 
+  // ✅ SAFE FLATTEN
   const threads = data
     .flatMap((p) => p.threads ?? [])
-    .filter((t) => t.no && !hiddenSet.has(String(t.no)));
+    .filter((t) => t?.no && !hiddenSet.has(String(t.no)));
 
   return (
     <div className="container">
