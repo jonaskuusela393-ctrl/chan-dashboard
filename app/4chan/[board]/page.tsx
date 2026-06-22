@@ -1,5 +1,5 @@
 import BackButton from "@/components/BackButton";
-import { getSql } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { getUser } from "@/lib/getUser";
 import BoardClient from "./BoardClient";
 
@@ -23,7 +23,6 @@ export default async function BoardPage({
 
   let data: CatalogPage[] = [];
 
-  // ✅ DIRECT 4CHAN FETCH (BEST FOR SERVER COMPONENTS)
   try {
     const res = await fetch(
       `https://a.4cdn.org/${board}/catalog.json`,
@@ -55,10 +54,7 @@ export default async function BoardPage({
     );
   }
 
-  // ✅ DB (Option B safe)
-  const sql = getSql();
   const user = await getUser();
-
   const hiddenSet = new Set<string>();
 
   if (user) {
@@ -75,7 +71,6 @@ export default async function BoardPage({
     }
   }
 
-  // ✅ SAFE THREAD FLATTEN
   const threads = data
     .flatMap((p) => p.threads ?? [])
     .filter((t) => t?.no && !hiddenSet.has(String(t.no)));
