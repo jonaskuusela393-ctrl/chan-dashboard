@@ -13,11 +13,17 @@ export default async function ThreadPage({
 }) {
   const { board, id } = params;
 
+  let posts: Post[] = [];
+
   try {
     const res = await fetch(
       `https://a.4cdn.org/${board}/thread/${id}.json`,
       {
         next: { revalidate: 30 },
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          Accept: "application/json",
+        },
       }
     );
 
@@ -27,21 +33,10 @@ export default async function ThreadPage({
 
     const data: ThreadData = await res.json();
 
-    // 🔥 CRITICAL FIX: filter invalid posts safely
-    const posts: Post[] = Array.isArray(data?.posts)
-      ? data.posts.filter(
-          (p): p is Post => typeof p.no === "number"
-        )
+    // ✅ SAFE + STRICT FILTER (prevents runtime crashes)
+    posts = Array.isArray(data?.posts)
+      ? data.posts.filter((p): p is Post => typeof p?.no === "number")
       : [];
-
-    return (
-      <div className="container">
-        <BackButton />
-        <h1>/{board}/ — thread {id}</h1>
-
-        <ThreadClient board={board} initialPosts={posts} />
-      </div>
-    );
   } catch (err) {
     console.error("Thread fetch failed:", err);
 
@@ -56,4 +51,15 @@ export default async function ThreadPage({
       </div>
     );
   }
+
+  return (
+    <div className="container">
+      <BackButton />
+      <h1>
+        /{board}/ — thread {id}
+      </h1>
+
+      <ThreadClient board={board} initialPosts={posts} />
+    </div>
+  );
 }

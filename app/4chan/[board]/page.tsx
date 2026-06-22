@@ -23,14 +23,21 @@ export default async function BoardPage({
 
   let data: CatalogPage[] = [];
 
-  // ✅ USE YOUR API PROXY (NOT 4chan DIRECT)
+  // ✅ DIRECT 4CHAN FETCH (BEST FOR SERVER COMPONENTS)
   try {
-    const res = await fetch(`/api/4chan/${board}`, {
-      next: { revalidate: 60 },
-    });
+    const res = await fetch(
+      `https://a.4cdn.org/${board}/catalog.json`,
+      {
+        next: { revalidate: 60 },
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          Accept: "application/json",
+        },
+      }
+    );
 
     if (!res.ok) {
-      throw new Error(`API HTTP ${res.status}`);
+      throw new Error(`4chan HTTP ${res.status}`);
     }
 
     data = await res.json();
@@ -42,13 +49,13 @@ export default async function BoardPage({
         <BackButton />
         <h1>/{board}/</h1>
         <p style={{ color: "red" }}>
-          Failed to load threads. API proxy error or server issue.
+          Failed to load threads. 4chan API error or blocked.
         </p>
       </div>
     );
   }
 
-  // ✅ DB (Option B)
+  // ✅ DB (Option B safe)
   const sql = getSql();
   const user = await getUser();
 
@@ -68,7 +75,7 @@ export default async function BoardPage({
     }
   }
 
-  // ✅ SAFE FLATTEN
+  // ✅ SAFE THREAD FLATTEN
   const threads = data
     .flatMap((p) => p.threads ?? [])
     .filter((t) => t?.no && !hiddenSet.has(String(t.no)));

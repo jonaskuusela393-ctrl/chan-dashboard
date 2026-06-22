@@ -19,18 +19,16 @@ export default function BoardClient({
   const [threads, setThreads] = useState<Thread[]>(initialThreads);
   const [loadingId, setLoadingId] = useState<number | null>(null);
 
-  async function hideThread(threadId: number) {
-    if (!threadId) return;
+  async function hideThread(threadId?: number) {
+    if (typeof threadId !== "number") return;
 
     setLoadingId(threadId);
 
-    // ✅ SAFE COPY (fix rollback bug)
-    const previous = [...threads];
+    // snapshot (safe rollback)
+    const previous = threads;
 
-    // optimistic UI update
-    setThreads((prev) =>
-      prev.filter((t) => t.no !== threadId)
-    );
+    // optimistic update
+    setThreads((prev) => prev.filter((t) => t.no !== threadId));
 
     try {
       const res = await fetch("/api/hide", {
@@ -51,7 +49,7 @@ export default function BoardClient({
     } catch (err) {
       console.error("Hide error:", err);
 
-      // rollback safely
+      // rollback
       setThreads(previous);
     } finally {
       setLoadingId(null);
@@ -71,17 +69,23 @@ export default function BoardClient({
       {threads.map((t) => {
         if (typeof t.no !== "number") return null;
 
+        const isLoading = loadingId === t.no;
+
         return (
           <div
             key={t.no}
             className="card"
-            style={{ position: "relative" }}
+            style={{
+              position: "relative",
+              opacity: isLoading ? 0.7 : 1,
+            }}
           >
             <Link
               href={`/4chan/${board}/thread/${t.no}`}
               style={{
                 textDecoration: "none",
                 color: "inherit",
+                pointerEvents: isLoading ? "none" : "auto",
               }}
             >
               <div className="title">
@@ -94,19 +98,19 @@ export default function BoardClient({
             </Link>
 
             <button
-              onClick={() => hideThread(t.no!)}
-              disabled={loadingId === t.no}
+              onClick={() => hideThread(t.no)}
+              disabled={isLoading}
               style={{
                 marginTop: 8,
                 fontSize: 12,
                 background: "#111",
                 border: "1px solid #333",
                 color: "white",
-                cursor: "pointer",
-                opacity: loadingId === t.no ? 0.5 : 1,
+                cursor: isLoading ? "not-allowed" : "pointer",
+                opacity: isLoading ? 0.5 : 1,
               }}
             >
-              {loadingId === t.no ? "Hiding..." : "Hide"}
+              {isLoading ? "Hiding..." : "Hide"}
             </button>
           </div>
         );

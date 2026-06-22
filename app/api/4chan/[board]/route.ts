@@ -29,7 +29,7 @@ export async function GET(
     console.error("4chan API error:", err);
 
     return NextResponse.json(
-      { error: "Failed to fetch 4chan API" },
+      { error: "Failed to fetch 4chan" },
       { status: 500 }
     );
   }
