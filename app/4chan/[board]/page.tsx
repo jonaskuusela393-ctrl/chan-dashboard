@@ -17,9 +17,9 @@ type CatalogPage = {
 export default async function BoardPage({
   params,
 }: {
-  params: { board: string };
+  params: Promise<{ board: string }>;
 }) {
-  const board = params?.board;
+  const { board } = await params;
 
   // =========================
   // VALIDATE BOARD

@@ -4,27 +4,62 @@ import { useState } from "react";
 import sanitizeHtml from "sanitize-html";
 import type { Post } from "@/app/types/chan";
 
+type ThreadClientProps = {
+  board: string;
+  initialPosts: Post[];
+};
+
+function cleanHtml(html: string) {
+  return sanitizeHtml(html, {
+    allowedTags: [
+      "a",
+      "br",
+      "span",
+      "p",
+      "b",
+      "i",
+      "em",
+      "strong",
+      "s",
+      "u",
+      "wbr",
+      "blockquote",
+    ],
+    allowedAttributes: {
+      a: ["href", "class", "target", "rel"],
+      span: ["class"],
+      p: ["class"],
+      blockquote: ["class"],
+    },
+    allowedSchemes: ["http", "https"],
+    transformTags: {
+      a: sanitizeHtml.simpleTransform("a", {
+        rel: "noreferrer",
+      }),
+    },
+  });
+}
+
 export default function ThreadClient({
   board,
   initialPosts,
-}: {
-  board: string;
-  initialPosts: Post[];
-}) {
+}: ThreadClientProps) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [loadingId, setLoadingId] = useState<number | null>(null);
 
   async function hidePost(postId: number) {
     setLoadingId(postId);
 
-    const previous = [...posts];
+    const previous = posts;
 
     setPosts((prev) => prev.filter((p) => p.no !== postId));
 
     try {
       const res = await fetch("/api/hide", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           itemId: postId,
           itemType: "post",
@@ -32,13 +67,19 @@ export default function ThreadClient({
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to hide post");
+      if (!res.ok) {
+        throw new Error(`Failed to hide post: ${res.status}`);
+      }
     } catch (err) {
       console.error("Hide post failed:", err);
       setPosts(previous);
     } finally {
       setLoadingId(null);
     }
+  }
+
+  if (!posts.length) {
+    return <p>No posts found.</p>;
   }
 
   return (
@@ -51,32 +92,47 @@ export default function ThreadClient({
             ? `https://i.4cdn.org/${board}/${p.tim}${p.ext}`
             : null;
 
+        const imageFileName = p.tim && p.ext ? `${p.tim}${p.ext}` : null;
+
         return (
           <div
             key={p.no}
             className="card"
-            style={{ borderColor: isOP ? "#666" : "#222" }}
+            style={{
+              borderColor: isOP ? "#666" : "#222",
+            }}
           >
             <div className="meta">
               No.{p.no} {isOP && "• OP"}
             </div>
 
-            <div
-              className="post-body"
-              dangerouslySetInnerHTML={{
-                __html: sanitizeHtml(p.com ?? ""),
-              }}
-            />
+            {p.sub && <h2>{p.sub}</h2>}
 
-            {imageUrl && (
-              <a href={imageUrl} target="_blank" rel="noreferrer">
-                <img
-                  src={imageUrl}
-                  className="post-img"
-                  alt=""
-                  loading="lazy"
-                />
+            {imageUrl && imageFileName && (
+              <a
+                href={imageUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "inline-block",
+                  marginTop: 8,
+                  marginBottom: 8,
+                  fontSize: 12,
+                  color: "#9cf",
+                  textDecoration: "underline",
+                }}
+              >
+                {imageFileName}
               </a>
+            )}
+
+            {p.com && (
+              <div
+                className="post-body"
+                dangerouslySetInnerHTML={{
+                  __html: cleanHtml(p.com),
+                }}
+              />
             )}
 
             <button
@@ -89,6 +145,7 @@ export default function ThreadClient({
                 border: "1px solid #333",
                 color: "white",
                 opacity: loadingId === p.no ? 0.5 : 1,
+                cursor: loadingId === p.no ? "not-allowed" : "pointer",
               }}
             >
               {loadingId === p.no ? "Hiding..." : "Hide post"}
