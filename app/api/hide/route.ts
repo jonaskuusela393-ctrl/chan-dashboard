@@ -19,9 +19,7 @@ export async function POST(request: Request) {
 
     if (!databaseUrl) {
       return NextResponse.json(
-        {
-          error: "DATABASE_URL is missing",
-        },
+        { error: "DATABASE_URL is missing" },
         { status: 500 }
       );
     }
@@ -35,27 +33,21 @@ export async function POST(request: Request) {
 
     if (!Number.isInteger(itemId)) {
       return NextResponse.json(
-        {
-          error: "Missing or invalid itemId",
-        },
+        { error: "Missing or invalid itemId" },
         { status: 400 }
       );
     }
 
     if (!isValidItemType(itemType)) {
       return NextResponse.json(
-        {
-          error: "Missing or invalid itemType",
-        },
+        { error: "Missing or invalid itemType" },
         { status: 400 }
       );
     }
 
     if (!board || typeof board !== "string") {
       return NextResponse.json(
-        {
-          error: "Missing or invalid board",
-        },
+        { error: "Missing or invalid board" },
         { status: 400 }
       );
     }
@@ -66,17 +58,25 @@ export async function POST(request: Request) {
         item_id BIGINT NOT NULL,
         item_type TEXT NOT NULL,
         board TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        CONSTRAINT hidden_items_unique UNIQUE (item_id, item_type, board)
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `;
 
-    await sql`
-      INSERT INTO hidden_items (item_id, item_type, board)
-      VALUES (${itemId}, ${itemType}, ${board})
-      ON CONFLICT (item_id, item_type, board)
-      DO NOTHING
+    const existing = await sql`
+      SELECT id
+      FROM hidden_items
+      WHERE item_id = ${itemId}
+      AND item_type = ${itemType}
+      AND board = ${board}
+      LIMIT 1
     `;
+
+    if (existing.length === 0) {
+      await sql`
+        INSERT INTO hidden_items (item_id, item_type, board)
+        VALUES (${itemId}, ${itemType}, ${board})
+      `;
+    }
 
     return NextResponse.json({
       ok: true,
