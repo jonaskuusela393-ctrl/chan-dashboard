@@ -16,22 +16,43 @@ export default function BoardClient({
   board: string;
   threads: Thread[];
 }) {
-  const [threads, setThreads] = useState(initialThreads);
+  const [threads, setThreads] = useState<Thread[]>(initialThreads);
+  const [loadingId, setLoadingId] = useState<number | null>(null);
 
-  async function hideThread(threadId?: number) {
+  async function hideThread(threadId: number) {
     if (!threadId) return;
 
-    await fetch("/api/hide", {
-      method: "POST",
-      body: JSON.stringify({
-        itemId: threadId,
-        itemType: "thread",
-        board,
-      }),
-    });
+    setLoadingId(threadId);
 
-    // 🔥 instant UI update (NO reload)
+    const previous = threads;
+
+    // optimistic UI update
     setThreads((prev) => prev.filter((t) => t.no !== threadId));
+
+    try {
+      const res = await fetch("/api/hide", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          itemId: threadId,
+          itemType: "thread",
+          board,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to hide thread");
+      }
+    } catch (err) {
+      console.error("Hide error:", err);
+
+      // rollback if API fails
+      setThreads(previous);
+    } finally {
+      setLoadingId(null);
+    }
   }
 
   return (
@@ -55,7 +76,10 @@ export default function BoardClient({
           >
             <Link
               href={`/4chan/${board}/thread/${id}`}
-              style={{ textDecoration: "none", color: "inherit" }}
+              style={{
+                textDecoration: "none",
+                color: "inherit",
+              }}
             >
               <div className="title">
                 {t.sub?.trim() || "No title"}
@@ -66,9 +90,9 @@ export default function BoardClient({
               </div>
             </Link>
 
-            {/* 🔥 HIDE BUTTON */}
             <button
               onClick={() => hideThread(id)}
+              disabled={loadingId === id}
               style={{
                 marginTop: 8,
                 fontSize: 12,
@@ -76,9 +100,10 @@ export default function BoardClient({
                 border: "1px solid #333",
                 color: "white",
                 cursor: "pointer",
+                opacity: loadingId === id ? 0.5 : 1,
               }}
             >
-              Hide
+              {loadingId === id ? "Hiding..." : "Hide"}
             </button>
           </div>
         );

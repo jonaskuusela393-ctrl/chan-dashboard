@@ -24,27 +24,41 @@ export default function ThreadClient({
 
     setLoadingId(postId);
 
-    await fetch("/api/hide", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        itemId: postId,
-        itemType: "post",
-        board,
-      }),
-    });
+    const previous = posts;
 
+    // optimistic update
     setPosts((prev) => prev.filter((p) => p.no !== postId));
 
-    setLoadingId(null);
+    try {
+      const res = await fetch("/api/hide", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          itemId: postId,
+          itemType: "post",
+          board,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to hide post");
+      }
+    } catch (err) {
+      console.error("Hide post failed:", err);
+
+      // rollback UI if API fails
+      setPosts(previous);
+    } finally {
+      setLoadingId(null);
+    }
   }
 
   return (
     <div>
       {posts.map((p, index) => {
-        const isOP = index === 0;
+        const isOP = index === 0 || p.no === posts[0]?.no;
 
         const imageUrl =
           p?.tim && p?.ext

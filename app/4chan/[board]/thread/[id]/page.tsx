@@ -19,8 +19,6 @@ export default async function ThreadPage({
 }) {
   const { board, id } = params;
 
-  let data: ThreadData | null = null;
-
   try {
     const res = await fetch(
       `https://a.4cdn.org/${board}/thread/${id}.json`,
@@ -29,9 +27,30 @@ export default async function ThreadPage({
       }
     );
 
-    if (!res.ok) throw new Error("Thread not found");
+    if (!res.ok) {
+      throw new Error("Thread not found");
+    }
 
-    data = await res.json();
+    const data: ThreadData = await res.json();
+
+    const posts: Post[] = Array.isArray(data?.posts)
+      ? data.posts
+      : [];
+
+    return (
+      <div className="container">
+        <BackButton />
+
+        <h1>
+          /{board}/ — thread {id}
+        </h1>
+
+        <ThreadClient
+          board={board}
+          initialPosts={posts}
+        />
+      </div>
+    );
   } catch {
     return (
       <div className="container">
@@ -47,20 +66,4 @@ export default async function ThreadPage({
       </div>
     );
   }
-
-  const posts: Post[] = Array.isArray(data?.posts)
-    ? data.posts
-    : [];
-
-  return (
-    <div className="container">
-      <BackButton />
-
-      <h1>
-        /{board}/ — thread {id}
-      </h1>
-
-      <ThreadClient board={board} initialPosts={posts} />
-    </div>
-  );
 }
