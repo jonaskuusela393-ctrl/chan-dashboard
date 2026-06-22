@@ -28,7 +28,7 @@ export default async function ThreadPage({
     );
 
     if (!res.ok) {
-      throw new Error("Thread not found");
+      throw new Error(`4chan HTTP ${res.status}`);
     }
 
     const data: ThreadData = await res.json();
@@ -40,28 +40,21 @@ export default async function ThreadPage({
     return (
       <div className="container">
         <BackButton />
+        <h1>/{board}/ — thread {id}</h1>
 
-        <h1>
-          /{board}/ — thread {id}
-        </h1>
-
-        <ThreadClient
-          board={board}
-          initialPosts={posts}
-        />
+        <ThreadClient board={board} initialPosts={posts} />
       </div>
     );
-  } catch {
+  } catch (err) {
+    console.error("Thread fetch failed:", err);
+
     return (
       <div className="container">
         <BackButton />
-
-        <h1>
-          /{board}/ — thread {id}
-        </h1>
+        <h1>/{board}/ — thread {id}</h1>
 
         <p style={{ color: "red" }}>
-          Failed to load thread. It may be deleted or archived.
+          Failed to load thread. API error, rate limit, or thread deleted.
         </p>
       </div>
     );

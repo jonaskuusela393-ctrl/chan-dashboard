@@ -4,14 +4,14 @@ import { getUser } from "@/lib/getUser";
 import BoardClient from "./BoardClient";
 
 type Thread = {
-  no?: number;
+  no: number;
   sub?: string;
   replies?: number;
 };
 
 type CatalogPage = {
-  page?: number;
-  threads?: Thread[];
+  page: number;
+  threads: Thread[];
 };
 
 export default async function BoardPage({
@@ -23,42 +23,32 @@ export default async function BoardPage({
 
   let data: CatalogPage[] = [];
 
-  // =========================
-  // FETCH VIA PROXY (FIX)
-  // =========================
   try {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/api/4chan/${board}`,
-      {
-        next: { revalidate: 60 },
-      }
+      `https://a.4cdn.org/${board}/catalog.json`,
+      { next: { revalidate: 60 } }
     );
 
     if (!res.ok) {
-      throw new Error(`Proxy HTTP ${res.status}`);
+      throw new Error(`4chan HTTP ${res.status}`);
     }
 
     data = await res.json();
   } catch (err) {
-    console.error("❌ Failed to fetch board:", err);
+    console.error("Board fetch failed:", err);
 
     return (
       <div className="container">
         <BackButton />
         <h1>/{board}/</h1>
-
         <p style={{ color: "red" }}>
-          Failed to load threads. API proxy error or server issue.
+          Failed to load threads. 4chan API error or blocked.
         </p>
       </div>
     );
   }
 
-  // =========================
-  // USER + HIDDEN THREADS
-  // =========================
   const user = await getUser();
-
   const hiddenSet = new Set<string>();
 
   if (user) {
@@ -75,18 +65,9 @@ export default async function BoardPage({
     }
   }
 
-  // =========================
-  // FLATTEN THREADS SAFELY
-  // =========================
-  const threads: Thread[] = Array.isArray(data)
-    ? data
-        .flatMap((page) => page?.threads ?? [])
-        .filter(
-          (t) =>
-            typeof t?.no === "number" &&
-            !hiddenSet.has(String(t.no))
-        )
-    : [];
+  const threads = data
+    .flatMap((p) => p.threads ?? [])
+    .filter((t) => t.no && !hiddenSet.has(String(t.no)));
 
   return (
     <div className="container">

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import sanitizeHtml from "sanitize-html";
 
 type Post = {
-  no?: number;
+  no: number;
   tim?: number;
   ext?: string;
   com?: string;
@@ -19,22 +20,17 @@ export default function ThreadClient({
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [loadingId, setLoadingId] = useState<number | null>(null);
 
-  async function hidePost(postId?: number) {
-    if (!postId) return;
-
+  async function hidePost(postId: number) {
     setLoadingId(postId);
 
     const previous = posts;
 
-    // optimistic update
     setPosts((prev) => prev.filter((p) => p.no !== postId));
 
     try {
       const res = await fetch("/api/hide", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           itemId: postId,
           itemType: "post",
@@ -42,13 +38,9 @@ export default function ThreadClient({
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to hide post");
-      }
+      if (!res.ok) throw new Error("Failed to hide post");
     } catch (err) {
       console.error("Hide post failed:", err);
-
-      // rollback UI if API fails
       setPosts(previous);
     } finally {
       setLoadingId(null);
@@ -57,29 +49,29 @@ export default function ThreadClient({
 
   return (
     <div>
-      {posts.map((p, index) => {
-        const isOP = index === 0 || p.no === posts[0]?.no;
+      {posts.map((p) => {
+        const isOP = p.no === posts[0]?.no;
 
         const imageUrl =
-          p?.tim && p?.ext
+          p.tim && p.ext
             ? `https://i.4cdn.org/${board}/${p.tim}${p.ext}`
             : null;
 
         return (
           <div
-            key={p.no ?? `${index}-${p.tim ?? "no-tim"}`}
+            key={p.no}
             className="card"
-            style={{
-              borderColor: isOP ? "#666" : "#222",
-            }}
+            style={{ borderColor: isOP ? "#666" : "#222" }}
           >
             <div className="meta">
-              No.{p.no ?? "?"} {isOP && "• OP"}
+              No.{p.no} {isOP && "• OP"}
             </div>
 
             <div
               className="post-body"
-              dangerouslySetInnerHTML={{ __html: p.com ?? "" }}
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHtml(p.com ?? ""),
+              }}
             />
 
             {imageUrl && (
@@ -87,9 +79,13 @@ export default function ThreadClient({
                 href={imageUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="image-link"
               >
-                <img src={imageUrl} className="post-img" alt="" />
+                <img
+                  src={imageUrl}
+                  className="post-img"
+                  alt=""
+                  loading="lazy"
+                />
               </a>
             )}
 
@@ -102,7 +98,6 @@ export default function ThreadClient({
                 background: "#111",
                 border: "1px solid #333",
                 color: "white",
-                cursor: "pointer",
                 opacity: loadingId === p.no ? 0.5 : 1,
               }}
             >

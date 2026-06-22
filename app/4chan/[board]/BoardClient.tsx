@@ -24,10 +24,13 @@ export default function BoardClient({
 
     setLoadingId(threadId);
 
-    const previous = threads;
+    // ✅ SAFE COPY (fix rollback bug)
+    const previous = [...threads];
 
     // optimistic UI update
-    setThreads((prev) => prev.filter((t) => t.no !== threadId));
+    setThreads((prev) =>
+      prev.filter((t) => t.no !== threadId)
+    );
 
     try {
       const res = await fetch("/api/hide", {
@@ -48,7 +51,7 @@ export default function BoardClient({
     } catch (err) {
       console.error("Hide error:", err);
 
-      // rollback if API fails
+      // rollback safely
       setThreads(previous);
     } finally {
       setLoadingId(null);
@@ -59,23 +62,23 @@ export default function BoardClient({
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+        gridTemplateColumns:
+          "repeat(auto-fill, minmax(260px, 1fr))",
         gap: 12,
         marginTop: 16,
       }}
     >
       {threads.map((t) => {
-        const id = t.no;
-        if (!id) return null;
+        if (typeof t.no !== "number") return null;
 
         return (
           <div
-            key={id}
+            key={t.no}
             className="card"
             style={{ position: "relative" }}
           >
             <Link
-              href={`/4chan/${board}/thread/${id}`}
+              href={`/4chan/${board}/thread/${t.no}`}
               style={{
                 textDecoration: "none",
                 color: "inherit",
@@ -91,8 +94,8 @@ export default function BoardClient({
             </Link>
 
             <button
-              onClick={() => hideThread(id)}
-              disabled={loadingId === id}
+              onClick={() => hideThread(t.no!)}
+              disabled={loadingId === t.no}
               style={{
                 marginTop: 8,
                 fontSize: 12,
@@ -100,10 +103,10 @@ export default function BoardClient({
                 border: "1px solid #333",
                 color: "white",
                 cursor: "pointer",
-                opacity: loadingId === id ? 0.5 : 1,
+                opacity: loadingId === t.no ? 0.5 : 1,
               }}
             >
-              {loadingId === id ? "Hiding..." : "Hide"}
+              {loadingId === t.no ? "Hiding..." : "Hide"}
             </button>
           </div>
         );
