@@ -24,21 +24,18 @@ export default async function BoardPage({
   let data: CatalogPage[] = [];
 
   // =========================
-  // FETCH 4CHAN CATALOG (SAFE)
+  // FETCH VIA PROXY (FIX)
   // =========================
   try {
     const res = await fetch(
-      `https://a.4cdn.org/${board}/catalog.json`,
+      `${process.env.NEXT_PUBLIC_BASE_URL}/api/4chan/${board}`,
       {
         next: { revalidate: 60 },
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-        },
       }
     );
 
     if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
+      throw new Error(`Proxy HTTP ${res.status}`);
     }
 
     data = await res.json();
@@ -51,7 +48,7 @@ export default async function BoardPage({
         <h1>/{board}/</h1>
 
         <p style={{ color: "red" }}>
-          Failed to load threads. 4chan API error or blocked request.
+          Failed to load threads. API proxy error or server issue.
         </p>
       </div>
     );
@@ -82,8 +79,13 @@ export default async function BoardPage({
   // FLATTEN THREADS SAFELY
   // =========================
   const threads: Thread[] = Array.isArray(data)
-    ? data.flatMap((page) => page?.threads ?? [])
-        .filter((t) => t?.no && !hiddenSet.has(String(t.no)))
+    ? data
+        .flatMap((page) => page?.threads ?? [])
+        .filter(
+          (t) =>
+            typeof t?.no === "number" &&
+            !hiddenSet.has(String(t.no))
+        )
     : [];
 
   return (
