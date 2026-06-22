@@ -1,13 +1,12 @@
 import { NextRequest } from "next/server";
 
-export async function GET(
-  req: NextRequest,
-  context: any
-) {
-  const board = context.params?.board;
+export async function GET(req: NextRequest, context: any) {
+  const params = await Promise.resolve(context?.params);
 
-  if (!board || typeof board !== "string") {
-    return new Response("Missing board", { status: 400 });
+  const board = params?.board;
+
+  if (typeof board !== "string" || !board) {
+    return new Response("Invalid board", { status: 400 });
   }
 
   try {
