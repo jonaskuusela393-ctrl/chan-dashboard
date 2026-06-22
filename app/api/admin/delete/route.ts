@@ -5,14 +5,17 @@ export async function POST(req: Request) {
   const user = await getUser();
 
   if (!user || user.role !== "admin") {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
+    return new Response("Unauthorized", { status: 401 });
   }
 
   const { itemId, itemType, board } = await req.json();
 
   await sql`
-    INSERT INTO deleted_items (item_type, item_id, board, deleted_by)
-    VALUES (${itemType}, ${itemId}, ${board}, ${user.id})
+    DELETE FROM hidden_items
+    WHERE user_id = ${user.id}
+    AND item_id = ${itemId}
+    AND item_type = ${itemType}
+    AND board = ${board}
   `;
 
   return Response.json({ success: true });

@@ -16,9 +16,9 @@ type CatalogPage = {
 export default async function BoardPage({
   params,
 }: {
-  params: Promise<{ board: string }>;
+  params: { board: string };
 }) {
-  const { board } = await params;
+  const { board } = params;
 
   let data: CatalogPage[] = [];
 
@@ -36,7 +36,9 @@ export default async function BoardPage({
     return (
       <div className="container">
         <BackButton />
+
         <h1>/{board}/</h1>
+
         <p style={{ color: "red" }}>
           Failed to load threads. The board may not exist or 4chan API is down.
         </p>
@@ -44,16 +46,14 @@ export default async function BoardPage({
     );
   }
 
-  // =========================
-  // 🔥 PERSONAL HIDE SYSTEM
-  // =========================
   const user = await getUser();
 
   let hiddenSet = new Set<string>();
 
   if (user) {
     const hidden = await sql`
-      SELECT item_id FROM hidden_items
+      SELECT item_id
+      FROM hidden_items
       WHERE user_id = ${user.id}
       AND item_type = 'thread'
       AND board = ${board}
@@ -71,6 +71,7 @@ export default async function BoardPage({
   return (
     <div className="container">
       <BackButton />
+
       <h1>/{board}/</h1>
 
       <BoardClient board={board} threads={threads} />

@@ -15,9 +15,9 @@ type ThreadData = {
 export default async function ThreadPage({
   params,
 }: {
-  params: Promise<{ board: string; id: string }>;
+  params: { board: string; id: string };
 }) {
-  const { board, id } = await params;
+  const { board, id } = params;
 
   let data: ThreadData | null = null;
 
@@ -36,7 +36,11 @@ export default async function ThreadPage({
     return (
       <div className="container">
         <BackButton />
-        <h1>/{board}/ — thread {id}</h1>
+
+        <h1>
+          /{board}/ — thread {id}
+        </h1>
+
         <p style={{ color: "red" }}>
           Failed to load thread. It may be deleted or archived.
         </p>
@@ -44,7 +48,9 @@ export default async function ThreadPage({
     );
   }
 
-  const posts: Post[] = Array.isArray(data?.posts) ? data.posts : [];
+  const posts: Post[] = Array.isArray(data?.posts)
+    ? data.posts
+    : [];
 
   return (
     <div className="container">

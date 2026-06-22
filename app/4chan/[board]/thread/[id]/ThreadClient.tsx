@@ -11,11 +11,9 @@ type Post = {
 
 export default function ThreadClient({
   board,
-  id,
   initialPosts,
 }: {
   board: string;
-  id: string;
   initialPosts: Post[];
 }) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
@@ -28,6 +26,9 @@ export default function ThreadClient({
 
     await fetch("/api/hide", {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         itemId: postId,
         itemType: "post",
@@ -35,10 +36,7 @@ export default function ThreadClient({
       }),
     });
 
-    // ✅ instant UI update (smooth remove)
-    setPosts((prev) =>
-      prev.filter((p) => p.no !== postId)
-    );
+    setPosts((prev) => prev.filter((p) => p.no !== postId));
 
     setLoadingId(null);
   }
@@ -77,17 +75,10 @@ export default function ThreadClient({
                 rel="noreferrer"
                 className="image-link"
               >
-                <img
-                  src={imageUrl}
-                  className="post-img"
-                  alt=""
-                />
+                <img src={imageUrl} className="post-img" alt="" />
               </a>
             )}
 
-            {/* =========================
-                🔥 HIDE BUTTON
-            ========================= */}
             <button
               onClick={() => hidePost(p.no)}
               disabled={loadingId === p.no}
