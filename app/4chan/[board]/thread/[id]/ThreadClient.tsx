@@ -43,6 +43,7 @@ function cleanHtml(html: string) {
     allowedSchemes: ["http", "https"],
     transformTags: {
       a: sanitizeHtml.simpleTransform("a", {
+        target: "_blank",
         rel: "noreferrer",
       }),
     },
@@ -53,13 +54,20 @@ export default function ThreadClient({
   board,
   initialPosts,
 }: ThreadClientProps) {
-  const [posts, setPosts] = useState<ThreadPost[]>(initialPosts);
+  const [posts, setPosts] = useState<ThreadPost[]>(
+    Array.isArray(initialPosts) ? initialPosts : []
+  );
+
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function hidePost(postId: number) {
+    if (loadingId !== null) return;
+
     setLoadingId(postId);
     setError(null);
+
+    const previousPosts = posts;
 
     setPosts((prev) => prev.filter((p) => p.no !== postId));
 
@@ -84,10 +92,10 @@ export default function ThreadClient({
       console.error("Hide post failed:", err);
 
       setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to save hidden post."
+        err instanceof Error ? err.message : "Failed to save hidden post."
       );
+
+      setPosts(previousPosts);
     } finally {
       setLoadingId(null);
     }
@@ -97,7 +105,7 @@ export default function ThreadClient({
     return (
       <div>
         {error && (
-          <p style={{ color: "red" }}>
+          <p style={{ color: "red", fontSize: 12 }}>
             {error}
           </p>
         )}
@@ -110,34 +118,64 @@ export default function ThreadClient({
   return (
     <div>
       {error && (
-        <p style={{ color: "red" }}>
+        <p style={{ color: "red", fontSize: 12 }}>
           {error}
         </p>
       )}
 
-      {posts.map((p, index) => {
+      {posts.map((post, index) => {
         const isOP = index === 0;
+        const isLoading = loadingId === post.no;
 
         const imageUrl =
-          p.tim && p.ext
-            ? `https://i.4cdn.org/${board}/${p.tim}${p.ext}`
+          post.tim && post.ext
+            ? `https://i.4cdn.org/${board}/${post.tim}${post.ext}`
             : null;
 
-        const imageFileName = p.tim && p.ext ? `${p.tim}${p.ext}` : null;
+        const imageFileName =
+          post.tim && post.ext ? `${post.tim}${post.ext}` : null;
 
         return (
           <div
-            key={p.no}
+            key={post.no}
             className="card"
             style={{
+              position: "relative",
               borderColor: isOP ? "#666" : "#222",
+              paddingRight: 42,
+              opacity: isLoading ? 0.7 : 1,
             }}
           >
+            <button
+              onClick={() => hidePost(post.no)}
+              disabled={loadingId !== null}
+              title="Hide post"
+              aria-label={`Hide post ${post.no}`}
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                width: 28,
+                height: 28,
+                borderRadius: 999,
+                background: "#111",
+                border: "1px solid #333",
+                color: "white",
+                fontSize: 18,
+                lineHeight: "24px",
+                textAlign: "center",
+                opacity: isLoading ? 0.5 : 1,
+                cursor: loadingId !== null ? "not-allowed" : "pointer",
+              }}
+            >
+              ×
+            </button>
+
             <div className="meta">
-              No.{p.no} {isOP && "• OP"}
+              No.{post.no} {isOP && "• OP"}
             </div>
 
-            {p.sub && <h2>{p.sub}</h2>}
+            {post.sub && <h2>{post.sub}</h2>}
 
             {imageUrl && imageFileName && (
               <a
@@ -151,36 +189,21 @@ export default function ThreadClient({
                   fontSize: 12,
                   color: "#9cf",
                   textDecoration: "underline",
+                  wordBreak: "break-all",
                 }}
               >
                 {imageFileName}
               </a>
             )}
 
-            {p.com && (
+            {post.com && (
               <div
                 className="post-body"
                 dangerouslySetInnerHTML={{
-                  __html: cleanHtml(p.com),
+                  __html: cleanHtml(post.com),
                 }}
               />
             )}
-
-            <button
-              onClick={() => hidePost(p.no)}
-              disabled={loadingId === p.no}
-              style={{
-                marginTop: 8,
-                fontSize: 11,
-                background: "#111",
-                border: "1px solid #333",
-                color: "white",
-                opacity: loadingId === p.no ? 0.5 : 1,
-                cursor: loadingId === p.no ? "not-allowed" : "pointer",
-              }}
-            >
-              {loadingId === p.no ? "Hiding..." : "Hide post"}
-            </button>
           </div>
         );
       })}

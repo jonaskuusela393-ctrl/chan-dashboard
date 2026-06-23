@@ -1,6 +1,21 @@
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
 
+const modules = [
+  {
+    href: "/4chan",
+    title: "4chan viewer",
+    description: "Boards, threads, hidden posts, personal viewport.",
+    icon: "→",
+  },
+  {
+    href: "/strim",
+    title: "Stream / Kick module",
+    description: "Streaming dashboard module.",
+    icon: "🎮",
+  },
+];
+
 export default function Home() {
   return (
     <div className="container">
@@ -8,34 +23,19 @@ export default function Home() {
 
       <h1>My Dashboard 🎉</h1>
 
-      <p style={{ opacity: 0.7 }}>
-        Select a module to continue
-      </p>
+      <p className="muted">Select a module to continue</p>
 
-      <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
-        <Link
-          href="/4chan"
-          className="card"
-          style={{
-            padding: "12px 16px",
-            fontWeight: 600,
-            color: "#9ad1ff",
-          }}
-        >
-          → 4chan viewer
-        </Link>
+      <div className="module-grid">
+        {modules.map((module) => (
+          <Link key={module.href} href={module.href} className="module-card">
+            <div className="module-title">
+              <span>{module.icon}</span>
+              <span>{module.title}</span>
+            </div>
 
-        <Link
-          href="/strim"
-          className="card"
-          style={{
-            padding: "12px 16px",
-            fontWeight: 600,
-            color: "#9affb2",
-          }}
-        >
-          🎮 Stream / Kick module
-        </Link>
+            <p className="module-description">{module.description}</p>
+          </Link>
+        ))}
       </div>
     </div>
   );

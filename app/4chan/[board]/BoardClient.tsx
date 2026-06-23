@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 
 type Thread = {
@@ -9,6 +9,14 @@ type Thread = {
   replies?: number;
 };
 
+type ValidThread = Thread & {
+  no: number;
+};
+
+function isValidThread(thread: Thread | null | undefined): thread is ValidThread {
+  return Boolean(thread && typeof thread.no === "number");
+}
+
 export default function BoardClient({
   board,
   threads: initialThreads,
@@ -16,26 +24,26 @@ export default function BoardClient({
   board: string;
   threads: Thread[];
 }) {
-  // ✅ GUARANTEE ARRAY SAFETY
   const [threads, setThreads] = useState<Thread[]>(
     Array.isArray(initialThreads) ? initialThreads : []
   );
 
   const [loadingId, setLoadingId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  async function hideThread(threadId?: number) {
-    if (typeof threadId !== "number") return;
+  const safeThreads = useMemo(
+    () => (Array.isArray(threads) ? threads.filter(isValidThread) : []),
+    [threads]
+  );
 
+  async function hideThread(threadId: number) {
     setLoadingId(threadId);
+    setError(null);
 
-    // snapshot (safe rollback)
     const previous = threads;
 
-    // optimistic update (safe)
     setThreads((prev) =>
-      Array.isArray(prev)
-        ? prev.filter((t) => t?.no !== threadId)
-        : []
+      Array.isArray(prev) ? prev.filter((t) => t?.no !== threadId) : []
     );
 
     try {
@@ -52,80 +60,117 @@ export default function BoardClient({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to hide thread");
+        const errorText = await res.text();
+        throw new Error(`Failed to hide thread: ${res.status} ${errorText}`);
       }
     } catch (err) {
-      console.error("Hide error:", err);
+      console.error("Hide thread error:", err);
 
-      // rollback (safe)
+      setError(
+        err instanceof Error ? err.message : "Failed to save hidden thread."
+      );
+
       setThreads(Array.isArray(previous) ? previous : []);
     } finally {
       setLoadingId(null);
     }
   }
 
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns:
-          "repeat(auto-fill, minmax(260px, 1fr))",
-        gap: 12,
-        marginTop: 16,
-      }}
-    >
-      {Array.isArray(threads) &&
-        threads
-          .filter((t) => t && typeof t.no === "number")
-          .map((t) => {
-            const isLoading = loadingId === t.no;
+  if (safeThreads.length === 0) {
+    return (
+      <div style={{ marginTop: 16 }}>
+        {error && (
+          <p style={{ color: "red", fontSize: 12 }}>
+            {error}
+          </p>
+        )}
 
-            return (
-              <div
-                key={t.no}
-                className="card"
+        <p style={{ opacity: 0.7 }}>No threads found.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {error && (
+        <p style={{ color: "red", fontSize: 12, marginTop: 12 }}>
+          {error}
+        </p>
+      )}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+          gap: 12,
+          marginTop: 16,
+        }}
+      >
+        {safeThreads.map((thread) => {
+          const isLoading = loadingId === thread.no;
+
+          const title =
+            typeof thread.sub === "string" && thread.sub.trim()
+              ? thread.sub.trim()
+              : "No title";
+
+          const replies =
+            typeof thread.replies === "number" ? thread.replies : 0;
+
+          return (
+            <div
+              key={thread.no}
+              className="card"
+              style={{
+                position: "relative",
+                opacity: isLoading ? 0.7 : 1,
+                paddingRight: 42,
+              }}
+            >
+              <button
+                onClick={() => hideThread(thread.no)}
+                disabled={isLoading}
+                title="Hide thread"
+                aria-label={`Hide thread ${thread.no}`}
                 style={{
-                  position: "relative",
-                  opacity: isLoading ? 0.7 : 1,
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 999,
+                  background: "#111",
+                  border: "1px solid #333",
+                  color: "white",
+                  fontSize: 18,
+                  lineHeight: "24px",
+                  textAlign: "center",
+                  cursor: isLoading ? "not-allowed" : "pointer",
+                  opacity: isLoading ? 0.5 : 1,
                 }}
               >
-                <Link
-                  href={`/4chan/${board}/thread/${t.no}`}
-                  style={{
-                    textDecoration: "none",
-                    color: "inherit",
-                    pointerEvents: isLoading ? "none" : "auto",
-                  }}
-                >
-                  <div className="title">
-                    {typeof t.sub === "string" && t.sub.trim()
-                      ? t.sub.trim()
-                      : "No title"}
-                  </div>
+                ×
+              </button>
 
-                  <div className="meta">
-                    replies: {typeof t.replies === "number" ? t.replies : 0}
-                  </div>
-                </Link>
+              <Link
+                href={`/4chan/${board}/thread/${thread.no}`}
+                style={{
+                  display: "block",
+                  textDecoration: "none",
+                  color: "inherit",
+                  pointerEvents: isLoading ? "none" : "auto",
+                }}
+              >
+                <div className="title">{title}</div>
 
-                <button
-                  onClick={() => hideThread(t.no)}
-                  disabled={isLoading}
-                  style={{
-                    marginTop: 8,
-                    fontSize: 12,
-                    background: "#111",
-                    border: "1px solid #333",
-                    color: "white",
-                    cursor: isLoading ? "not-allowed" : "pointer",
-                    opacity: isLoading ? 0.5 : 1,
-                  }}
-                >
-                  {isLoading ? "Hiding..." : "Hide"}
-                </button>
-              </div>
-            );
-          })}
+                <div className="meta">
+                  replies: {replies}
+                </div>
+              </Link>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

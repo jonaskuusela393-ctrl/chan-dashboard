@@ -2,6 +2,8 @@ import { neon } from "@neondatabase/serverless";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type HideBody = {
   itemId?: number;
@@ -11,6 +13,10 @@ type HideBody = {
 
 function isValidItemType(value: unknown): value is "post" | "thread" | "board" {
   return value === "post" || value === "thread" || value === "board";
+}
+
+function isValidBoard(board: string) {
+  return /^[a-z0-9]+$/i.test(board);
 }
 
 export async function POST(request: Request) {
@@ -25,13 +31,39 @@ export async function POST(request: Request) {
     }
 
     const sql = neon(databaseUrl);
-    const body = (await request.json()) as HideBody;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS hidden_items (
+        id BIGSERIAL PRIMARY KEY,
+        item_id BIGINT NOT NULL,
+        item_type TEXT NOT NULL,
+        board TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+
+    // Auto-delete hidden items older than 7 days
+    await sql`
+      DELETE FROM hidden_items
+      WHERE created_at < NOW() - INTERVAL '7 days'
+    `;
+
+    let body: HideBody;
+
+    try {
+      body = (await request.json()) as HideBody;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body" },
+        { status: 400 }
+      );
+    }
 
     const itemId = body.itemId;
     const itemType = body.itemType;
     const board = body.board;
 
-    if (!Number.isInteger(itemId)) {
+    if (!Number.isSafeInteger(itemId) || itemId <= 0) {
       return NextResponse.json(
         { error: "Missing or invalid itemId" },
         { status: 400 }
@@ -45,22 +77,12 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!board || typeof board !== "string") {
+    if (!board || typeof board !== "string" || !isValidBoard(board)) {
       return NextResponse.json(
         { error: "Missing or invalid board" },
         { status: 400 }
       );
     }
-
-    await sql`
-      CREATE TABLE IF NOT EXISTS hidden_items (
-        id BIGSERIAL PRIMARY KEY,
-        item_id BIGINT NOT NULL,
-        item_type TEXT NOT NULL,
-        board TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `;
 
     const existing = await sql`
       SELECT id

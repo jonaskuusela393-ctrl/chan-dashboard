@@ -7,22 +7,49 @@ type Board = {
 };
 
 type ApiResponse = {
-  boards: Board[];
+  boards?: unknown;
 };
+
+function isBoard(value: unknown): value is Board {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "board" in value &&
+    "title" in value &&
+    typeof (value as Board).board === "string" &&
+    typeof (value as Board).title === "string"
+  );
+}
 
 export default async function BoardsPage() {
   try {
     const res = await fetch("https://a.4cdn.org/boards.json", {
       next: { revalidate: 300 },
+      headers: {
+        Accept: "application/json",
+      },
     });
 
+    const text = await res.text();
+
     if (!res.ok) {
+      console.error("Boards API HTTP error:", res.status);
+      console.error("Boards response:", text.slice(0, 500));
       throw new Error(`4chan API HTTP ${res.status}`);
     }
 
-    const data: ApiResponse = await res.json();
+    let data: ApiResponse;
 
-    const boards = Array.isArray(data?.boards) ? data.boards : [];
+    try {
+      data = JSON.parse(text) as ApiResponse;
+    } catch {
+      console.error("Expected boards JSON but got:", text.slice(0, 500));
+      throw new Error("4chan boards API returned non-JSON response");
+    }
+
+    const boards = Array.isArray(data.boards)
+      ? data.boards.filter(isBoard)
+      : [];
 
     if (boards.length === 0) {
       return (
