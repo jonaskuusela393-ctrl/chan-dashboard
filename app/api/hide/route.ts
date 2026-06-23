@@ -42,7 +42,6 @@ export async function POST(request: Request) {
       )
     `;
 
-    // Auto-delete hidden items older than 7 days
     await sql`
       DELETE FROM hidden_items
       WHERE created_at < NOW() - INTERVAL '7 days'
@@ -63,7 +62,11 @@ export async function POST(request: Request) {
     const itemType = body.itemType;
     const board = body.board;
 
-    if (!Number.isSafeInteger(itemId) || itemId <= 0) {
+    if (
+      typeof itemId !== "number" ||
+      !Number.isSafeInteger(itemId) ||
+      itemId <= 0
+    ) {
       return NextResponse.json(
         { error: "Missing or invalid itemId" },
         { status: 400 }
