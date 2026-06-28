@@ -30,9 +30,7 @@ export default function ChatGPTTerminalPage() {
       if (savedPassword) {
         setPassword(savedPassword);
       }
-    } catch {
-      // ignore bad localStorage data
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -101,36 +99,27 @@ export default function ChatGPTTerminalPage() {
         }),
       });
 
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         const data = await res.json().catch(() => null);
         throw new Error(data?.error || "Request failed.");
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
+      // ⭐ NON-STREAMING GEMINI RESPONSE
+      const textResponse = await res.text();
 
-      let assistantText = "";
+      setHistory((current) => {
+        const copy = [...current];
+        const lastIndex = copy.length - 1;
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+        if (copy[lastIndex]?.role === "assistant") {
+          copy[lastIndex] = {
+            role: "assistant",
+            content: textResponse || "[empty response]",
+          };
+        }
 
-        assistantText += decoder.decode(value, { stream: true });
-
-        setHistory((current) => {
-          const copy = [...current];
-          const lastIndex = copy.length - 1;
-
-          if (copy[lastIndex]?.role === "assistant") {
-            copy[lastIndex] = {
-              role: "assistant",
-              content: assistantText,
-            };
-          }
-
-          return copy;
-        });
-      }
+        return copy;
+      });
 
       setStatus("ready");
     } catch (err) {
