@@ -9,44 +9,62 @@ type ChatMessage = {
   content: string;
 };
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
 
-function cleanMessages(value: unknown): ChatMessage[] {
+function cleanHistory(value: unknown): ChatMessage[] {
   if (!Array.isArray(value)) return [];
 
   return value
-    .filter((msg) => {
+    .filter((item) => {
+      if (!item || typeof item !== "object") return false;
+
+      const msg = item as Partial<ChatMessage>;
+
       return (
-        msg &&
-        typeof msg === "object" &&
         (msg.role === "user" || msg.role === "assistant") &&
         typeof msg.content === "string"
       );
     })
-    .slice(-20)
-    .map((msg) => ({
-      role: msg.role,
-      content: msg.content.slice(0, 6000),
-    }));
+    .slice(-18)
+    .map((item) => {
+      const msg = item as ChatMessage;
+
+      return {
+        role: msg.role,
+        content: msg.content.slice(0, 5000),
+      };
+    });
+}
+
+export async function GET() {
+  return Response.json({
+    ok: true,
+    hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY),
+    model: process.env.OPENAI_MODEL || "gpt-5-mini",
+    hasPassword: Boolean(process.env.CHATGPT_TERMINAL_PASSWORD),
+  });
 }
 
 export async function POST(req: Request) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    if (!apiKey) {
       return Response.json(
-        { error: "Missing OPENAI_API_KEY in environment variables." },
+        { error: "Missing OPENAI_API_KEY in Vercel." },
         { status: 500 }
       );
     }
 
-    const savedPassword = process.env.CHAT_TERMINAL_PASSWORD;
+    const realPassword = process.env.CHATGPT_TERMINAL_PASSWORD;
 
-    if (savedPassword) {
-      const givenPassword = req.headers.get("x-chat-password") || "";
+    if (realPassword) {
+      const givenPassword = req.headers.get("x-terminal-password") || "";
 
-      if (givenPassword !== savedPassword) {
+      if (givenPassword !== realPassword) {
         return Response.json(
           { error: "Wrong terminal password." },
           { status: 401 }
@@ -60,72 +78,48 @@ export async function POST(req: Request) {
       typeof body?.message === "string" ? body.message.trim() : "";
 
     if (!message) {
-      return Response.json({ error: "Message is empty." }, { status: 400 });
+      return Response.json({ error: "Empty message." }, { status: 400 });
     }
 
-    const history = cleanMessages(body?.history);
+    const history = cleanHistory(body?.history);
 
-    const transcript = history
+    const historyText = history
       .map((msg) => {
-        const name = msg.role === "user" ? "USER" : "ASSISTANT";
-        return `${name}: ${msg.content}`;
+        const who = msg.role === "user" ? "USER" : "ASSISTANT";
+        return `${who}: ${msg.content}`;
       })
       .join("\n\n");
 
-    const input = transcript
-      ? `Conversation so far:\n${transcript}\n\nNew USER message:\n${message}`
+    const input = historyText
+      ? `Previous conversation:\n\n${historyText}\n\nNew message:\n${message}`
       : message;
 
-    const stream = await openai.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-5.4-mini",
+    const openai = new OpenAI({
+      apiKey,
+    });
+
+    const response = await openai.responses.create({
+      model: process.env.OPENAI_MODEL || "gpt-5-mini",
       instructions:
-        "You are ChatGPT running inside Jonas's custom dashboard terminal UI. Answer clearly, directly, and helpfully. Keep formatting readable in a terminal. Do not claim to be the ChatGPT website.",
+        "You are ChatGPT inside a private custom dashboard terminal UI. Answer clearly, directly, and practically.",
       input,
-      stream: true,
     });
 
-    const encoder = new TextEncoder();
-
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const event of stream) {
-            if (event.type === "response.output_text.delta") {
-              controller.enqueue(encoder.encode(event.delta));
-            }
-
-            if (event.type === "response.refusal.delta") {
-              controller.enqueue(encoder.encode(event.delta));
-            }
-
-            if (event.type === "error") {
-              controller.enqueue(
-                encoder.encode("\n\n[error] Something went wrong.")
-              );
-            }
-          }
-
-          controller.close();
-        } catch (err) {
-          controller.enqueue(
-            encoder.encode(
-              "\n\n[error] Stream failed. Check server logs and API key."
-            )
-          );
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(readable, {
+    return new Response(response.output_text || "[empty response]", {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
+        "Cache-Control": "no-cache",
       },
     });
-  } catch (err) {
+  } catch (error) {
+    const message = getErrorMessage(error);
+
+    console.error("CHATGPT_TERMINAL_ERROR:", message);
+
     return Response.json(
-      { error: "Server error while talking to OpenAI." },
+      {
+        error: message,
+      },
       { status: 500 }
     );
   }
