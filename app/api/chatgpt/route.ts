@@ -43,8 +43,8 @@ export async function GET() {
   return Response.json({
     ok: true,
     hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY),
-    model: process.env.OPENAI_MODEL || "gpt-5-mini",
-    hasPassword: Boolean(process.env.CHATGPT_TERMINAL_PASSWORD),
+    model: process.env.OPENAI_MODEL || "gpt-5",
+    passwordRemoved: true,
   });
 }
 
@@ -57,19 +57,6 @@ export async function POST(req: Request) {
         { error: "Missing OPENAI_API_KEY in Vercel." },
         { status: 500 }
       );
-    }
-
-    const realPassword = process.env.CHATGPT_TERMINAL_PASSWORD;
-
-    if (realPassword) {
-      const givenPassword = req.headers.get("x-terminal-password") || "";
-
-      if (givenPassword !== realPassword) {
-        return Response.json(
-          { error: "Wrong terminal password." },
-          { status: 401 }
-        );
-      }
     }
 
     const body = await req.json().catch(() => null);
@@ -99,7 +86,7 @@ export async function POST(req: Request) {
     });
 
     const response = await openai.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-5-mini",
+      model: process.env.OPENAI_MODEL || "gpt-5",
       instructions:
         "You are ChatGPT inside a private custom dashboard terminal UI. Answer clearly, directly, and practically. Keep formatting readable in a terminal.",
       input,
