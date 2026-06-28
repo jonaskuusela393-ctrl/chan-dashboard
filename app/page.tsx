@@ -14,6 +14,12 @@ const modules = [
     description: "Streaming dashboard module.",
     icon: "🎮",
   },
+  {
+    href: "/chatgpt",
+    title: "ChatGPT Terminal",
+    description: "Private custom AI terminal inside the dashboard.",
+    icon: "▣",
+  },
 ];
 
 export default function Home() {
