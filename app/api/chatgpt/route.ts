@@ -101,7 +101,7 @@ export async function POST(req: Request) {
     const response = await openai.responses.create({
       model: process.env.OPENAI_MODEL || "gpt-5-mini",
       instructions:
-        "You are ChatGPT inside a private custom dashboard terminal UI. Answer clearly, directly, and practically.",
+        "You are ChatGPT inside a private custom dashboard terminal UI. Answer clearly, directly, and practically. Keep formatting readable in a terminal.",
       input,
     });
 
