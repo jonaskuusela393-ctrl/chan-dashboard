@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 type ChatMessage = {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "model";
   content: string;
 };
 
@@ -22,8 +22,11 @@ function cleanHistory(value: unknown): ChatMessage[] {
       const msg = item as Partial<ChatMessage>;
 
       return (
-        (msg.role === "user" || msg.role === "assistant") &&
-        typeof msg.content === "string"
+        (msg.role === "user" ||
+          msg.role === "assistant" ||
+          msg.role === "model") &&
+        typeof msg.content === "string" &&
+        msg.content.trim().length > 0
       );
     })
     .slice(-18)
@@ -37,11 +40,25 @@ function cleanHistory(value: unknown): ChatMessage[] {
     });
 }
 
+function extractGeminiText(data: any) {
+  const parts = data?.candidates?.[0]?.content?.parts;
+
+  if (!Array.isArray(parts)) return "";
+
+  return parts
+    .map((part) => {
+      if (typeof part?.text === "string") return part.text;
+      return "";
+    })
+    .join("")
+    .trim();
+}
+
 export async function GET() {
   return Response.json({
     ok: true,
     hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     passwordRemoved: true,
   });
 }
@@ -66,11 +83,10 @@ export async function POST(req: Request) {
       return Response.json({ error: "Empty message." }, { status: 400 });
     }
 
-    const history = cleanHistory(body?.history);
+    const history = cleanHistory(body?.history || body?.messages);
 
-    // Convert your history into Gemini format
     const contents = history.map((msg) => ({
-      role: msg.role,
+      role: msg.role === "assistant" ? "model" : msg.role,
       parts: [{ text: msg.content }],
     }));
 
@@ -80,36 +96,52 @@ export async function POST(req: Request) {
     });
 
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" +
-        apiKey,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           contents,
-          systemInstruction: {
-            role: "system",
-            parts: [
-              {
-                text: "You are ChatGPT inside a private custom dashboard terminal UI. Answer clearly, directly, and practically. Keep formatting readable in a terminal.",
-              },
-            ],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
           },
         }),
       }
     );
 
-    const data = await response.json();
+    const data = await response.json().catch(() => null);
 
-    const text =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "[empty response]";
+    console.log("GEMINI STATUS:", response.status);
+    console.log("GEMINI DATA:", JSON.stringify(data, null, 2));
 
-    return new Response(text, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache",
-      },
+    if (!response.ok) {
+      return Response.json(
+        {
+          error:
+            data?.error?.message ||
+            `Gemini request failed with status ${response.status}`,
+          debug: data,
+        },
+        { status: response.status }
+      );
+    }
+
+    const text = extractGeminiText(data);
+
+    if (!text) {
+      return Response.json({
+        reply: "[empty response from Gemini]",
+        debug: data,
+      });
+    }
+
+    return Response.json({
+      reply: text,
     });
   } catch (error) {
     const message = getErrorMessage(error);

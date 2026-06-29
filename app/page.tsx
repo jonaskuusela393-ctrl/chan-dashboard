@@ -1,222 +1,256 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 
-type ChatMessage = {
+type Message = {
   role: "user" | "assistant";
   content: string;
 };
 
-const HISTORY_KEY = "chan-dashboard-chatgpt-history";
+export default function HomePage() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "assistant",
+      content: "booting custom Google AI terminal...\ncommands: /clear",
+    },
+  ]);
 
-export default function ChatGPTTerminalPage() {
-  const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState("READY");
+  const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    try {
-      const savedHistory = localStorage.getItem(HISTORY_KEY);
-
-      if (savedHistory) {
-        setHistory(JSON.parse(savedHistory));
-      }
-    } catch {
-      // ignore broken saved data
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(-40)));
-    } catch {
-      // ignore storage errors
-    }
-
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history]);
+  }, [messages, loading]);
 
-  function clearTerminal() {
-    setHistory([]);
-    localStorage.removeItem(HISTORY_KEY);
-    setStatus("CLEARED");
-  }
-
-  async function submitMessage(e: FormEvent) {
+  async function sendMessage(e: FormEvent) {
     e.preventDefault();
 
     const text = input.trim();
+    if (!text || loading) return;
 
-    if (!text || busy) return;
-
-    if (text.toLowerCase() === "/clear") {
+    if (text === "/clear") {
+      setMessages([]);
       setInput("");
-      clearTerminal();
       return;
     }
 
-    if (text.toLowerCase() === "/help") {
-      setInput("");
-      setHistory((old) => [
-        ...old,
-        { role: "user", content: "/help" },
-        {
-          role: "assistant",
-          content:
-            "Commands:\n/clear = clear chat history\n/help = show this help\n\nType normally to talk with ChatGPT.",
-        },
-      ]);
-      return;
-    }
-
-    const userMessage: ChatMessage = {
+    const userMessage: Message = {
       role: "user",
       content: text,
     };
 
-    const emptyAssistant: ChatMessage = {
-      role: "assistant",
-      content: "",
-    };
+    const nextMessages = [...messages, userMessage];
 
+    setMessages(nextMessages);
     setInput("");
-    setBusy(true);
-    setStatus("THINKING");
-
-    setHistory((old) => [...old, userMessage, emptyAssistant]);
+    setLoading(true);
 
     try {
-      const res = await fetch("/api/chatgpt", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           message: text,
-          history: history.slice(-18),
+          history: messages,
         }),
       });
 
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.error || "Request failed.");
+      const data = await res.json().catch(() => null);
+
+      console.log("API STATUS:", res.status);
+      console.log("API DATA:", data);
+
+      if (!res.ok) {
+        throw new Error(data?.error || "API error");
       }
 
-      const textResponse = await res.text();
+      const aiText =
+        data?.reply ||
+        data?.response ||
+        data?.text ||
+        data?.output_text ||
+        "";
 
-      setHistory((current) => {
-        const copy = [...current];
-        const lastIndex = copy.length - 1;
-
-        if (copy[lastIndex]?.role === "assistant") {
-          copy[lastIndex] = {
-            role: "assistant",
-            content: textResponse || "[empty response]",
-          };
-        }
-
-        return copy;
-      });
-
-      setStatus("READY");
-    } catch (err) {
-      const errorText =
-        err instanceof Error ? err.message : "Unknown terminal error.";
-
-      setHistory((current) => {
-        const copy = [...current];
-        const lastIndex = copy.length - 1;
-
-        if (copy[lastIndex]?.role === "assistant") {
-          copy[lastIndex] = {
-            role: "assistant",
-            content: `[error] ${errorText}`,
-          };
-        }
-
-        return copy;
-      });
-
-      setStatus("ERROR");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            aiText && aiText.trim()
+              ? aiText.trim()
+              : "Empty response. Open Vercel logs and check GEMINI DATA.",
+        },
+      ]);
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `[error] ${err?.message || "Something went wrong"}`,
+        },
+      ]);
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   }
 
   return (
-    <main className="container">
-      <div className="chatgpt-terminal-header">
-        <div>
-          <h1>ChatGPT Terminal</h1>
-          <div className="meta">custom dashboard module</div>
-        </div>
-
-        <Link href="/" className="action-button">
-          back
-        </Link>
-      </div>
-
-      <section className="chatgpt-terminal-card">
-        <div className="chatgpt-terminal-top">
+    <main style={styles.page}>
+      <div style={styles.terminal}>
+        <div style={styles.header}>
           <div>
-            <span className="chatgpt-terminal-dot" />
-            <span>chatgpt://terminal</span>
+            <div style={styles.title}>chatgpt://terminal</div>
+            <div style={styles.subtitle}>Google AI / Vercel</div>
           </div>
 
-          <span>{status}</span>
+          <button onClick={() => setMessages([])} style={styles.clearButton}>
+            clear
+          </button>
         </div>
 
-        <div className="chatgpt-terminal-output">
-          <div className="chatgpt-terminal-system">
-            boot complete. type /help for commands.
-          </div>
-
-          {history.map((msg, index) => (
-            <div
-              key={index}
-              className={
-                msg.role === "user"
-                  ? "chatgpt-terminal-message chatgpt-user"
-                  : "chatgpt-terminal-message chatgpt-assistant"
-              }
-            >
-              <div className="chatgpt-terminal-label">
-                {msg.role === "user" ? "YOU" : "CHATGPT"}
+        <div style={styles.output}>
+          {messages.map((msg, index) => (
+            <div key={index} style={styles.messageBlock}>
+              <div style={msg.role === "user" ? styles.userLabel : styles.aiLabel}>
+                {msg.role === "user" ? "you" : "ai"}
               </div>
 
-              <pre>{msg.content || "..."}</pre>
+              <pre style={styles.messageText}>{msg.content}</pre>
             </div>
           ))}
 
-          {busy && <div className="chatgpt-terminal-blink">█</div>}
+          {loading && (
+            <div style={styles.messageBlock}>
+              <div style={styles.aiLabel}>ai</div>
+              <pre style={styles.messageText}>thinking...</pre>
+            </div>
+          )}
 
           <div ref={bottomRef} />
         </div>
 
-        <form onSubmit={submitMessage} className="chatgpt-terminal-input-row">
-          <span className="chatgpt-terminal-prompt">&gt;</span>
-
+        <form onSubmit={sendMessage} style={styles.form}>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={busy}
-            className="chatgpt-terminal-input"
-            placeholder="message..."
+            placeholder="type message..."
+            style={styles.input}
+            disabled={loading}
             autoFocus
           />
 
-          <button
-            type="submit"
-            disabled={busy || !input.trim()}
-            className="action-button chatgpt-terminal-send"
-          >
+          <button type="submit" style={styles.sendButton} disabled={loading}>
             send
           </button>
         </form>
-      </section>
+      </div>
     </main>
   );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    minHeight: "100vh",
+    background: "#050505",
+    color: "#e5e5e5",
+    fontFamily:
+      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
+  terminal: {
+    width: "100%",
+    maxWidth: 900,
+    height: "90vh",
+    border: "1px solid #333",
+    borderRadius: 12,
+    background: "#0b0b0b",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  header: {
+    padding: "14px 16px",
+    borderBottom: "1px solid #222",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    background: "#111",
+  },
+  title: {
+    color: "#7cff7c",
+    fontSize: 15,
+  },
+  subtitle: {
+    color: "#888",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  clearButton: {
+    background: "#191919",
+    color: "#aaa",
+    border: "1px solid #333",
+    borderRadius: 8,
+    padding: "8px 10px",
+    cursor: "pointer",
+  },
+  output: {
+    flex: 1,
+    overflowY: "auto",
+    padding: 16,
+  },
+  messageBlock: {
+    marginBottom: 18,
+  },
+  userLabel: {
+    color: "#70a7ff",
+    fontSize: 13,
+    marginBottom: 5,
+  },
+  aiLabel: {
+    color: "#7cff7c",
+    fontSize: 13,
+    marginBottom: 5,
+  },
+  messageText: {
+    margin: 0,
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    fontFamily: "inherit",
+    fontSize: 14,
+    lineHeight: 1.55,
+  },
+  form: {
+    display: "flex",
+    gap: 8,
+    padding: 12,
+    borderTop: "1px solid #222",
+    background: "#111",
+  },
+  input: {
+    flex: 1,
+    background: "#050505",
+    color: "#fff",
+    border: "1px solid #333",
+    borderRadius: 8,
+    padding: "12px 14px",
+    fontFamily: "inherit",
+    fontSize: 14,
+    outline: "none",
+  },
+  sendButton: {
+    background: "#7cff7c",
+    color: "#000",
+    border: "none",
+    borderRadius: 8,
+    padding: "0 18px",
+    fontFamily: "inherit",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+};
