@@ -1,39 +1,28 @@
 {
-  "name": "chan-dashboard",
-  "version": "0.1.0",
+  "name": "chan-dashboard-rebuild",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "next start -p 3000",
+    "local:movies": "node local/movie-server.mjs",
+    "local:llm": "node local/llm-bridge.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
-    "@upstash/ratelimit": "^2.0.8",
-    "@upstash/redis": "^1.38.0",
-    "@vercel/blob": "^2.4.1",
-    "ably": "^2.23.0",
-    "bcryptjs": "^3.0.3",
-    "cookie": "^1.1.1",
-    "jsonwebtoken": "^9.0.3",
-    "next": "16.2.9",
-    "next-auth": "^4.24.14",
-    "openai": "^6.45.0",
-    "pg": "^8.22.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "sanitize-html": "^2.17.5"
+    "@types/sanitize-html": "latest",
+    "cheerio": "latest",
+    "he": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "sanitize-html": "latest"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/sanitize-html": "^2.16.1",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.9",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest"
   }
 }

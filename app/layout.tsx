@@ -1,48 +1,27 @@
 import type { Metadata } from "next";
-import "./globals.css";
 import Link from "next/link";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "4chan Dashboard",
-  description: "Custom 4chan viewer",
+  title: "Private Dashboard",
+  description: "Custom read-only dashboard"
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-black text-white antialiased">
-        <div style={{ display: "flex", minHeight: "100vh" }}>
-          
-          {/* SIDEBAR */}
-          <aside
-            style={{
-              width: 220,
-              borderRight: "1px solid #222",
-              padding: 15,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-            }}
-          >
-            <h3 style={{ margin: 0 }}>Menu</h3>
-
-            <Link href="/" className="card">Home</Link>
-            <Link href="/4chan" className="card">4chan</Link>
-            <Link href="/strim" className="card">Strim</Link>
-          </aside>
-
-          {/* MAIN CONTENT */}
-          <main style={{ flex: 1 }}>
-            <div className="app-shell">
-              {children}
-            </div>
-          </main>
-
-        </div>
+      <body>
+        <header className="topbar">
+          <Link href="/" className="brand">private viewport</Link>
+          <nav>
+            <Link href="/chan">4chan</Link>
+            <Link href="/dreamviews">DreamViews</Link>
+            <Link href="/movies">Movies</Link>
+            <Link href="/youtube">YouTube</Link>
+            <Link href="/llm">LLM</Link>
+          </nav>
+        </header>
+        <main className="shell">{children}</main>
       </body>
     </html>
   );

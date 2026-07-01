@@ -1,36 +1,138 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Private viewport dashboard
 
-## Getting Started
+Clean Next.js rebuild for:
 
-First, run the development server:
+- 4chan read-only viewport with image filename buttons and permanent Neon-backed deletes
+- DreamViews read-only forum/thread viewport with permanent Neon-backed deletes
+- Local movie player that only works when the movie server is running on this PC
+- YouTube text-only browser with no thumbnails/images
+- Local PC LLM usable from Vercel/phone through a secure tunnel
 
-```bash
+## Install
+
+```bat
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Required Vercel/local env vars
 
-## Learn More
+Copy `.env.example` to `.env.local` locally.
 
-To learn more about Next.js, take a look at the following resources:
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@HOST.neon.tech/DB?sslmode=require"
+YOUTUBE_API_KEY="your_youtube_data_api_key"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The delete buttons write rows to a `deleted_items` table in Neon. The app creates the table automatically. There is no unhide/clear route in the app. A database owner could still manually remove rows with SQL, so it is app-irreversible, not mathematically impossible.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Local PC LLM from Vercel / phone
 
-## Deploy on Vercel
+This is the important architecture:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```text
+phone/browser -> Vercel website -> your public tunnel URL -> your PC bridge -> Ollama/local model
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+It is free for model usage because the model runs on your PC. It only works while your PC, Ollama, the bridge, and the tunnel are running.
+
+### 1. Install and run Ollama
+
+Pull a model once:
+
+```bat
+ollama pull llama3.1
+```
+
+Start the Ollama app or run Ollama in the background.
+
+### 2. Start the local bridge on your PC
+
+Use a long random secret. The same value must be in Vercel as `LOCAL_LLM_TOKEN`.
+
+```bat
+set LOCAL_LLM_MODEL=llama3.1
+set LOCAL_LLM_TOKEN=change-this-long-random-secret
+npm run local:llm
+```
+
+The bridge listens on:
+
+```text
+http://127.0.0.1:43111
+```
+
+### 3. Create a public HTTPS tunnel to the bridge
+
+Example with Cloudflare Tunnel:
+
+```bat
+cloudflared tunnel --url http://127.0.0.1:43111
+```
+
+Copy the shown `https://...trycloudflare.com` URL.
+
+### 4. Set Vercel env vars
+
+```bat
+npx vercel env add LOCAL_LLM_URL production
+npx vercel env add LOCAL_LLM_TOKEN production
+npx vercel env add LOCAL_LLM_MODEL production
+npx vercel env add DASHBOARD_ACCESS_KEY production
+npx vercel --prod
+```
+
+Use:
+
+```text
+LOCAL_LLM_URL=https://the-url-from-cloudflared
+LOCAL_LLM_TOKEN=the-same-secret-from-your-PC
+LOCAL_LLM_MODEL=llama3.1
+DASHBOARD_ACCESS_KEY=optional-password-for-your-/llm-page
+```
+
+If you use a temporary `trycloudflare.com` URL, it changes when you restart the tunnel, so you must update `LOCAL_LLM_URL` in Vercel. For a stable URL, use a named tunnel/domain or another tunnel provider with a static domain.
+
+## Local movie server
+
+Only the movie server is local. Start it in a second CMD window:
+
+```bat
+set MOVIE_DIR=C:\Users\Jonas\Videos
+npm run local:movies
+```
+
+Then open `/movies` in the dashboard. The local server supports range seeking and external `.vtt` / `.srt` subtitles that have the same basename as the video.
+
+Example:
+
+```text
+Movie Name.mkv
+Movie Name.en.srt
+Movie Name.fi.vtt
+```
+
+Browser codec support still matters. MP4/H.264/AAC is the safest. Some MKV/AVI files may need conversion because Chrome cannot decode every codec/container.
+
+## Deploy
+
+```bat
+npx vercel@latest
+npx vercel@latest --prod
+```
+
+Make sure these are set in Vercel project environment variables:
+
+```text
+DATABASE_URL
+YOUTUBE_API_KEY
+LOCAL_LLM_URL
+LOCAL_LLM_TOKEN
+LOCAL_LLM_MODEL
+```
