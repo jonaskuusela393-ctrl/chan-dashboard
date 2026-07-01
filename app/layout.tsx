@@ -3,8 +3,8 @@ import "./globals.css";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Custom viewer + AI terminal",
+  title: "4chan Dashboard",
+  description: "Custom 4chan viewer",
 };
 
 export default function RootLayout({
@@ -15,12 +15,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-black text-white antialiased">
-
-        <div className="app-shell" style={{ display: "flex", minHeight: "100vh" }}>
+        <div style={{ display: "flex", minHeight: "100vh" }}>
           
           {/* SIDEBAR */}
           <aside
-            className="sidebar"
             style={{
               width: 220,
               borderRight: "1px solid #222",
@@ -33,18 +31,18 @@ export default function RootLayout({
             <h3 style={{ margin: 0 }}>Menu</h3>
 
             <Link href="/" className="card">Home</Link>
-            <Link href="/viewer/dreamviews" className="card">Dreamviews</Link>
-            <Link href="/viewer/rule34" className="card">Rule34</Link>
-            <Link href="/stream" className="card">Streaming</Link>
+            <Link href="/4chan" className="card">4chan</Link>
+            <Link href="/strim" className="card">Strim</Link>
           </aside>
 
           {/* MAIN CONTENT */}
           <main style={{ flex: 1 }}>
-            {children}
+            <div className="app-shell">
+              {children}
+            </div>
           </main>
 
         </div>
-
       </body>
     </html>
   );
