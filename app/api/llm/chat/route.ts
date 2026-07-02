@@ -14,13 +14,25 @@ function cleanModel(value: unknown) {
 
 function cleanMessages(value: unknown): Msg[] {
   if (!Array.isArray(value)) return [];
+
   return value
-    .filter((m) => m && typeof m === "object")
-    .map((m: any) => ({
-      role: m.role === "assistant" ? "assistant" : m.role === "system" ? "system" : "user",
-      content: String(m.content || "").slice(0, 12000)
-    }))
-    .filter((m) => m.content.trim())
+    .filter((m): m is { role?: unknown; content?: unknown } => {
+      return !!m && typeof m === "object";
+    })
+    .map((m): Msg => {
+      const role: Msg["role"] =
+        m.role === "assistant"
+          ? "assistant"
+          : m.role === "system"
+            ? "system"
+            : "user";
+
+      return {
+        role,
+        content: typeof m.content === "string" ? m.content.slice(0, 8000) : "",
+      };
+    })
+    .filter((m) => m.content.trim().length > 0)
     .slice(-20);
 }
 
