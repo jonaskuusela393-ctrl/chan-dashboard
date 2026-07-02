@@ -1,45 +1,61 @@
 "use client";
 
-type Entry = { t: number; expiresAt: number | null };
-type Store = Record<string, Entry>;
+import { deleteForever, loadDeleted } from "@/lib/deletedClient";
 
-function read(scope: string): Store {
-  try {
-    return JSON.parse(localStorage.getItem(scope) || "{}");
-  } catch {
-    return {};
-  }
+const memoryCache = new Map<string, Set<string>>();
+
+function cacheKey(scope: string) {
+  return `deleted:${scope}`;
 }
 
-function write(scope: string, store: Store) {
-  localStorage.setItem(scope, JSON.stringify(store));
+function cleanScope(scope: string) {
+  return scope.trim().toLowerCase() || "default";
+}
+
+function cleanId(id: string) {
+  return id.trim();
+}
+
+export async function loadHidden(scope: string): Promise<Set<string>> {
+  const safeScope = cleanScope(scope);
+  const deleted = await loadDeleted(safeScope);
+
+  memoryCache.set(cacheKey(safeScope), deleted);
+
+  return deleted;
 }
 
 export function isHidden(scope: string, id: string): boolean {
-  const store = read(scope);
-  const hit = store[id];
-  if (!hit) return false;
-  if (hit.expiresAt && Date.now() > hit.expiresAt) {
-    delete store[id];
-    write(scope, store);
-    return false;
+  const safeScope = cleanScope(scope);
+  const safeId = cleanId(id);
+
+  if (!safeId) return false;
+
+  const cached = memoryCache.get(cacheKey(safeScope));
+  return cached ? cached.has(safeId) : false;
+}
+
+export async function hide(scope: string, id: string, label?: string) {
+  const safeScope = cleanScope(scope);
+  const safeId = cleanId(id);
+
+  if (!safeId) {
+    throw new Error("Hide id is empty");
   }
-  return true;
+
+  const key = cacheKey(safeScope);
+  const cached = memoryCache.get(key) || new Set<string>();
+
+  cached.add(safeId);
+  memoryCache.set(key, cached);
+
+  await deleteForever(safeScope, safeId, label || safeId);
 }
 
-export function hide(scope: string, id: string, ttlDays?: number) {
-  const store = read(scope);
-  const expiresAt = ttlDays ? Date.now() + ttlDays * 24 * 60 * 60 * 1000 : null;
-  store[id] = { t: Date.now(), expiresAt };
-  write(scope, store);
+export function unhide() {
+  throw new Error("Unhide is disabled. Deleted items are permanent in this app.");
 }
 
-export function unhide(scope: string, id: string) {
-  const store = read(scope);
-  delete store[id];
-  write(scope, store);
-}
-
-export function clearHidden(scope: string) {
-  localStorage.removeItem(scope);
+export function clearHidden() {
+  throw new Error("Clear hidden is disabled. Deleted items are permanent in this app.");
 }
