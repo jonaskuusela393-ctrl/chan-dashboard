@@ -20,11 +20,14 @@ export async function GET(req: NextRequest) {
   const tim = url.searchParams.get("tim") || "";
   const ext = url.searchParams.get("ext") || "";
 
+  // Poistetaan kaikki muut paitsi numerot (kuten 's') pelkkää tarkistusta varten
+  const cleanTim = tim.replace(/\D/g, "");
+
   if (!BOARDS.has(board)) {
     return NextResponse.json({ error: "bad board" }, { status: 400 });
   }
 
-  if (!/^\d+$/.test(tim)) {
+  if (!/^\d+$/.test(cleanTim)) {
     return NextResponse.json({ error: "bad tim" }, { status: 400 });
   }
 
@@ -32,7 +35,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "bad ext" }, { status: 400 });
   }
 
-  const imageUrl = `https://i.4cdn.org/${board}/${tim}${ext}`;
+  // Käytetään alkuperäistä tim-muuttujaa (esim. 1745612650141704s) 4chan-pyynnössä
+  const imageUrl = `https://4cdn.org{board}/${tim}${ext}`;
 
   const res = await fetch(imageUrl, {
     headers: {

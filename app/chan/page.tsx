@@ -306,8 +306,6 @@ export default function ChanPage() {
                     {p.ext}
                   </button>
                 )}
-
-                <div className="html" dangerouslySetInnerHTML={{ __html: p.com }} />
               </article>
             );
           })}
