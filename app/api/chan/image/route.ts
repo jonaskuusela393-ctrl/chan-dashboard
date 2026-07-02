@@ -20,14 +20,11 @@ export async function GET(req: NextRequest) {
   const tim = url.searchParams.get("tim") || "";
   const ext = url.searchParams.get("ext") || "";
 
-  // Poistetaan kaikki muut paitsi numerot (kuten 's') pelkkää tarkistusta varten
-  const cleanTim = tim.replace(/\D/g, "");
-
   if (!BOARDS.has(board)) {
     return NextResponse.json({ error: "bad board" }, { status: 400 });
   }
 
-  if (!/^\d+$/.test(cleanTim)) {
+  if (!/^\d+$/.test(tim)) {
     return NextResponse.json({ error: "bad tim" }, { status: 400 });
   }
 
@@ -35,25 +32,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "bad ext" }, { status: 400 });
   }
 
-  // Käytetään alkuperäistä tim-muuttujaa (esim. 1745612650141704s) 4chan-pyynnössä
-  const imageUrl = `https://4cdn.org{board}/${tim}${ext}`;
-
-  const res = await fetch(imageUrl, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-    },
-    cache: "no-store",
-  });
-
-  if (!res.ok || !res.body) {
-    return NextResponse.json({ error: "image fetch failed" }, { status: res.status });
-  }
-
-  return new NextResponse(res.body, {
-    status: 200,
-    headers: {
-      "Content-Type": res.headers.get("content-type") || "application/octet-stream",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+  return NextResponse.redirect(`https://i.4cdn.org/${board}/${tim}${ext}`, 302);
 }

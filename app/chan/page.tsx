@@ -28,15 +28,15 @@ type ChanPost = ChanThread & {
 
 const DELETE_SCOPE = "chan";
 
-function media(board: string, p: { tim?: number; ext?: string }, thumb = false) {
-  if (!p.tim || !p.ext) return "";
+function cleanBoard(value: string) {
+  return value.replace(/[^a-z0-9]/gi, "").slice(0, 10).toLowerCase();
+}
 
-  const tim = thumb ? `${p.tim}s` : String(p.tim);
-  const ext = thumb ? ".jpg" : p.ext;
-
+function mediaUrl(board: string, p: { tim?: number; ext?: string }) {
+  if (!board || !p.tim || !p.ext) return "";
   return `/api/chan/image?board=${encodeURIComponent(board)}&tim=${encodeURIComponent(
-    tim
-  )}&ext=${encodeURIComponent(ext)}`;
+    String(p.tim)
+  )}&ext=${encodeURIComponent(p.ext)}`;
 }
 
 function threadKey(board: string, no: number) {
@@ -47,12 +47,19 @@ function postKey(board: string, no: number) {
   return `post:${board}:${no}`;
 }
 
+function openImage(url: string) {
+  if (!url) return;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export default function ChanPage() {
-  const [board, setBoard] = useState("g");
+  const [boardInput, setBoardInput] = useState("g");
+  const [activeBoard, setActiveBoard] = useState("g");
+
   const [threads, setThreads] = useState<ChanThread[]>([]);
   const [selected, setSelected] = useState<ChanThread | null>(null);
   const [posts, setPosts] = useState<ChanPost[]>([]);
-  const [image, setImage] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [deleted, setDeleted] = useState<Set<string>>(new Set());
@@ -66,7 +73,14 @@ export default function ChanPage() {
     }
   }
 
-  async function loadCatalog(nextBoard = board) {
+  async function loadCatalog(rawBoard = boardInput) {
+    const nextBoard = cleanBoard(rawBoard || "g");
+
+    if (!nextBoard) {
+      setError("Board is empty");
+      return;
+    }
+
     setLoading(true);
     setError("");
     setSelected(null);
@@ -86,6 +100,8 @@ export default function ChanPage() {
         throw new Error(data.error || "Catalog failed");
       }
 
+      setActiveBoard(nextBoard);
+      setBoardInput(nextBoard);
       setThreads(data.threads || []);
     } catch (e: any) {
       setError(e.message || "Catalog failed");
@@ -95,9 +111,12 @@ export default function ChanPage() {
   }
 
   async function openThread(t: ChanThread) {
+    const board = activeBoard;
+
     setSelected(t);
     setLoading(true);
     setError("");
+    setPosts([]);
 
     try {
       await refreshDeleted();
@@ -133,7 +152,7 @@ export default function ChanPage() {
   }
 
   useEffect(() => {
-    loadCatalog(board);
+    loadCatalog("g");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -141,17 +160,18 @@ export default function ChanPage() {
     const q = search.trim().toLowerCase();
 
     return threads
-      .filter((t) => !deleted.has(threadKey(board, t.no)))
+      .filter((t) => !deleted.has(threadKey(activeBoard, t.no)))
       .filter((t) => {
         if (!q) return true;
-
-        return `${t.no} ${t.sub} ${t.name} ${t.com}`.toLowerCase().includes(q);
+        return `${t.no} ${t.sub || ""} ${t.name || ""} ${t.com || ""}`
+          .toLowerCase()
+          .includes(q);
       });
-  }, [threads, board, search, deleted]);
+  }, [threads, activeBoard, search, deleted]);
 
   const shownPosts = useMemo(() => {
-    return posts.filter((p) => !deleted.has(postKey(board, p.no)));
-  }, [posts, board, deleted]);
+    return posts.filter((p) => !deleted.has(postKey(activeBoard, p.no)));
+  }, [posts, activeBoard, deleted]);
 
   return (
     <div className="stack">
@@ -159,27 +179,24 @@ export default function ChanPage() {
         <div>
           <h1>4chan viewport</h1>
           <p className="muted">
-            Read-only. Delete writes a permanent tombstone to your Neon database.
-            There is no unhide button in this app.
+            Read-only. Delete writes a permanent tombstone to Neon. Images only
+            load when you click the filename, so the page does not spam-load
+            thumbnails.
           </p>
         </div>
       </div>
 
       <div className="row panel">
         <input
-          value={board}
-          onChange={(e) =>
-            setBoard(
-              e.target.value
-                .replace(/[^a-z0-9]/gi, "")
-                .slice(0, 10)
-                .toLowerCase()
-            )
-          }
+          value={boardInput}
+          onChange={(e) => setBoardInput(cleanBoard(e.target.value))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") loadCatalog(boardInput);
+          }}
           placeholder="board, example g"
         />
 
-        <button onClick={() => loadCatalog(board)} disabled={loading}>
+        <button onClick={() => loadCatalog(boardInput)} disabled={loading}>
           load board
         </button>
 
@@ -190,6 +207,8 @@ export default function ChanPage() {
         />
 
         <button onClick={refreshDeleted}>reload deletes</button>
+
+        <span className="muted small">loaded /{activeBoard}/</span>
 
         {loading && <span className="muted">loading...</span>}
 
@@ -203,8 +222,7 @@ export default function ChanPage() {
       <div className="two">
         <section className="stack">
           {shownThreads.map((t) => {
-            const thumb = media(board, t, true);
-            const full = media(board, t);
+            const full = mediaUrl(activeBoard, t);
 
             return (
               <article className="thread" key={t.no}>
@@ -214,7 +232,10 @@ export default function ChanPage() {
                   <button
                     className="danger"
                     onClick={() =>
-                      removeForever(threadKey(board, t.no), `${board} thread ${t.no}`)
+                      removeForever(
+                        threadKey(activeBoard, t.no),
+                        `${activeBoard} thread ${t.no}`
+                      )
                     }
                   >
                     delete forever
@@ -228,48 +249,33 @@ export default function ChanPage() {
                   page {t.page}
                 </p>
 
-                {thumb && (
-                  <img
-                    className="thumb"
-                    src={thumb}
-                    alt="thumb"
-                    onClick={() => setImage(full)}
-                  />
-                )}
-
-                {t.tim && (
-                  <button onClick={() => setImage(full)}>
+                {t.tim && full && (
+                  <button onClick={() => openImage(full)}>
                     {t.tim}
                     {t.ext}
                   </button>
                 )}
 
-                <div className="html" dangerouslySetInnerHTML={{ __html: t.com }} />
+                <div
+                  className="html"
+                  dangerouslySetInnerHTML={{ __html: t.com || "" }}
+                />
               </article>
             );
           })}
         </section>
 
         <section className="stack viewer">
-          {image && (
-            <div className="panel">
-              <button onClick={() => setImage("")}>close image</button>
-              <br />
-              <br />
-              <img className="fullimg" src={image} alt="full" />
-            </div>
-          )}
-
           <div className="panel">
             <h2>{selected ? `Thread #${selected.no}` : "Open a thread"}</h2>
             <p className="muted">
-              Click the numbered ID or the image filename button like id.jpg/id.png.
+              Click the numbered ID to open a thread. Click the filename button
+              like 123.jpg / 123.png to open the image.
             </p>
           </div>
 
           {shownPosts.map((p) => {
-            const full = media(board, p);
-            const thumb = media(board, p, true);
+            const full = mediaUrl(activeBoard, p);
 
             return (
               <article className="post" key={p.no}>
@@ -284,28 +290,27 @@ export default function ChanPage() {
                   <button
                     className="danger"
                     onClick={() =>
-                      removeForever(postKey(board, p.no), `${board} post ${p.no}`)
+                      removeForever(
+                        postKey(activeBoard, p.no),
+                        `${activeBoard} post ${p.no}`
+                      )
                     }
                   >
                     delete forever
                   </button>
                 </div>
 
-                {thumb && (
-                  <img
-                    className="thumb"
-                    src={thumb}
-                    alt="thumb"
-                    onClick={() => setImage(full)}
-                  />
-                )}
-
-                {p.tim && (
-                  <button onClick={() => setImage(full)}>
+                {p.tim && full && (
+                  <button onClick={() => openImage(full)}>
                     {p.tim}
                     {p.ext}
                   </button>
                 )}
+
+                <div
+                  className="html"
+                  dangerouslySetInnerHTML={{ __html: p.com || "" }}
+                />
               </article>
             );
           })}

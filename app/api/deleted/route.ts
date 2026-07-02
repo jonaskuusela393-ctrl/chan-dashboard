@@ -12,10 +12,21 @@ export async function GET(req: NextRequest) {
   try {
     const scope = clean(req.nextUrl.searchParams.get("scope"), 80);
     if (!scope) return NextResponse.json({ error: "missing scope" }, { status: 400 });
+    
     const rows = await listDeleted(scope);
     return NextResponse.json({ db: hasDatabase(), keys: rows.map((r) => r.item_key), rows });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "deleted list failed" }, { status: 500 });
+    // Tulostetaan tarkka tietokantavirhe Vercelin palvelinlogeihin
+    console.error("DATABASE GET ERROR:", err);
+    
+    // KORJAUS: Palautetaan tyhjä lista 500-virheen sijaan, jotta sovellus ei kaadu,
+    // vaikka tietokantaa tai taulua ei olisi vielä luotu.
+    return NextResponse.json({ 
+      db: hasDatabase(), 
+      keys: [], 
+      rows: [], 
+      warning: err.message || "Fallback active" 
+    }, { status: 200 });
   }
 }
 
@@ -26,9 +37,12 @@ export async function POST(req: NextRequest) {
     const key = clean(body.key, 500);
     const label = clean(body.label, 300);
     if (!scope || !key) return NextResponse.json({ error: "missing scope or key" }, { status: 400 });
+    
     await addDeleted(scope, key, label);
     return NextResponse.json({ ok: true });
   } catch (err: any) {
+    // Tulostetaan tarkka tietokantavirhe Vercelin palvelinlogeihin
+    console.error("DATABASE POST ERROR:", err);
     return NextResponse.json({ error: err.message || "delete failed" }, { status: 500 });
   }
 }
