@@ -80,7 +80,7 @@ export async function listDeleted(username: string, scope: string): Promise<Dele
   const db = sql();
   if (!db) return [];
   await ensureSchema();
-  return await db`SELECT item_key, label, created_at::text FROM viewport_deleted_items WHERE username=${cleanUser(username)} AND scope=${cleanScope(scope)} ORDER BY created_at DESC` as DeletedRow[];
+  return (await db`SELECT item_key, label, created_at::text FROM viewport_deleted_items WHERE username=${cleanUser(username)} AND scope=${cleanScope(scope)} ORDER BY created_at DESC`) as unknown as DeletedRow[];
 }
 
 export async function addDeleted(username: string, scope: string, itemKey: string, label?: string) {
@@ -97,7 +97,7 @@ export async function listBoardBlocks(username: string): Promise<BoardBlock[]> {
   if (!db) return [];
   await ensureSchema();
   await db`DELETE FROM viewport_board_blocks WHERE expires_at IS NOT NULL AND expires_at <= NOW()`;
-  return await db`SELECT board, expires_at::text, created_at::text FROM viewport_board_blocks WHERE username=${cleanUser(username)} ORDER BY created_at DESC` as BoardBlock[];
+  return (await db`SELECT board, expires_at::text, created_at::text FROM viewport_board_blocks WHERE username=${cleanUser(username)} ORDER BY created_at DESC`) as unknown as BoardBlock[];
 }
 
 export async function setBoardBlock(username: string, boardInput: string, days: number | null) {
@@ -120,7 +120,7 @@ export async function isBoardBlocked(username: string, boardInput: string) {
   if (!db) return false;
   await ensureSchema();
   const board = cleanBoard(boardInput);
-  const rows = await db`SELECT board FROM viewport_board_blocks WHERE username=${cleanUser(username)} AND board=${board} AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1`;
+  const rows = (await db`SELECT board FROM viewport_board_blocks WHERE username=${cleanUser(username)} AND board=${board} AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1`) as unknown as Array<{ board: string }> ;
   return rows.length > 0;
 }
 
@@ -137,7 +137,7 @@ export async function listPresence(): Promise<Presence[]> {
   if (!db) return [];
   await ensureSchema();
   const rows = await db`SELECT username, role, (last_seen > NOW() - INTERVAL '35 seconds') AS online, last_seen::text FROM viewport_presence ORDER BY username ASC`;
-  return rows as Presence[];
+  return rows as unknown as Presence[];
 }
 
 export async function listChatMessages(limit = 80): Promise<ChatMessage[]> {
@@ -145,7 +145,7 @@ export async function listChatMessages(limit = 80): Promise<ChatMessage[]> {
   if (!db) return [];
   await ensureSchema();
   const rows = await db`SELECT id::int, username, role, body, attachments, created_at::text FROM viewport_chat_messages ORDER BY id DESC LIMIT ${Math.max(1, Math.min(limit, 200))}`;
-  return (rows as ChatMessage[]).reverse();
+  return (rows as unknown as ChatMessage[]).reverse();
 }
 
 export async function addChatMessage(username: string, role: string, body: string, attachments: ChatAttachment[]) {
@@ -155,5 +155,5 @@ export async function addChatMessage(username: string, role: string, body: strin
   const rows = await db`INSERT INTO viewport_chat_messages(username, role, body, attachments)
     VALUES(${cleanUser(username)}, ${role}, ${body.slice(0, 4000)}, ${JSON.stringify(attachments)}::jsonb)
     RETURNING id::int, username, role, body, attachments, created_at::text`;
-  return rows[0] as ChatMessage;
+  return (rows as unknown as ChatMessage[])[0];
 }

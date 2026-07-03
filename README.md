@@ -1,10 +1,26 @@
 # Private Terminal Dashboard
 
-Only includes:
-- login for two accounts
+Clean stripped-down build.
+
+Included:
+- full-site login for two accounts
 - 4chan read-only viewport
-- YouTube text browser
-- two-person terminal chat with small image/gif/video uploads
+- per-user deleted 4chan threads and replies
+- per-user board disable timers: 1 day, 7 days, 30 days, permanent
+- YouTube text browser with no thumbnails
+- private two-person terminal chat
+- online/offline lamps
+- small image/gif/video uploads stored in Neon as data URLs
+
+## Commands
+
+```powershell
+npx --yes pnpm@10.13.1 install
+npx --yes pnpm@10.13.1 build
+npx --yes pnpm@10.13.1 dev
+```
+
+The build script intentionally runs `node scripts/build.mjs` so `pnpm build` exits cleanly after `next build`.
 
 ## Vercel env vars
 
@@ -27,19 +43,17 @@ SESSION_DAYS=30
 CHAT_MAX_UPLOAD_MB=4
 ```
 
+Generate AUTH_SECRET:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
 ## Neon
 
 Run `NEON_SCHEMA.sql` in Neon SQL Editor.
 
-The app also creates the tables automatically if DATABASE_URL is set.
-
-## Commands
-
-```powershell
-npx --yes pnpm@10.13.1 install
-npx --yes pnpm@10.13.1 build
-npx --yes pnpm@10.13.1 dev
-```
+The app also creates the tables automatically if `DATABASE_URL` is set.
 
 ## 4chan posting
 
