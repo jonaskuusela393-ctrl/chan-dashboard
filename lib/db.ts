@@ -1,157 +1,159 @@
+import "server-only";
 import { neon } from "@neondatabase/serverless";
 
+export type DeletedRow = { item_key: string; label: string | null; created_at: string };
+export type BoardBlock = { board: string; expires_at: string | null; created_at: string };
+export type ChatAttachment = { name: string; type: string; dataUrl: string; size: number };
+export type ChatMessage = { id: number; username: string; role: string; body: string; attachments: ChatAttachment[]; created_at: string };
+export type Presence = { username: string; role: string; online: boolean; last_seen: string };
+
 type Sql = ReturnType<typeof neon>;
+let cached: Sql | null | undefined;
+let schemaReady = false;
 
-type DeletedRow = {
-  item_key: string;
-  label: string | null;
-  created_at: string;
-};
-
-let cachedSql: Sql | null | undefined;
-
-function getSql() {
-  if (cachedSql !== undefined) return cachedSql;
-
-  const url = process.env.DATABASE_URL;
-  cachedSql = url ? neon(url) : null;
-
-  return cachedSql;
+function sql() {
+  if (cached !== undefined) return cached;
+  cached = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
+  return cached;
 }
 
 export function hasDatabase() {
   return Boolean(process.env.DATABASE_URL);
 }
 
-function cleanScope(scope: string) {
-  return scope.replace(/[^a-z0-9_-]/gi, "").slice(0, 50).toLowerCase() || "default";
+function cleanUser(value: string) {
+  return value.replace(/[^a-z0-9._-]/gi, "").slice(0, 80).toLowerCase();
+}
+function cleanScope(value: string) {
+  return value.replace(/[^a-z0-9_-]/gi, "").slice(0, 80).toLowerCase();
+}
+function cleanBoard(value: string) {
+  return value.replace(/[^a-z0-9]/gi, "").slice(0, 10).toLowerCase();
 }
 
-export async function ensureDeletedTable() {
-  const sql = getSql();
+export async function ensureSchema() {
+  const db = sql();
+  if (!db) throw new Error("DATABASE_URL is not set");
+  if (schemaReady) return;
 
-  if (!sql) {
-    throw new Error("DATABASE_URL is not set");
-  }
+  await db`CREATE TABLE IF NOT EXISTS viewport_deleted_items (
+    id BIGSERIAL PRIMARY KEY,
+    username TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    item_key TEXT NOT NULL,
+    label TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(username, scope, item_key)
+  )`;
 
-  await sql`
-    CREATE TABLE IF NOT EXISTS deleted_items (
-      id TEXT PRIMARY KEY,
-      scope TEXT,
-      item_key TEXT,
-      label TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `;
+  await db`CREATE TABLE IF NOT EXISTS viewport_board_blocks (
+    username TEXT NOT NULL,
+    board TEXT NOT NULL,
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY(username, board)
+  )`;
 
-  await sql`
-    ALTER TABLE deleted_items
-    ADD COLUMN IF NOT EXISTS scope TEXT
-  `;
+  await db`CREATE TABLE IF NOT EXISTS viewport_chat_messages (
+    id BIGSERIAL PRIMARY KEY,
+    username TEXT NOT NULL,
+    role TEXT NOT NULL,
+    body TEXT NOT NULL,
+    attachments JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`;
 
-  await sql`
-    ALTER TABLE deleted_items
-    ADD COLUMN IF NOT EXISTS item_key TEXT
-  `;
+  await db`CREATE TABLE IF NOT EXISTS viewport_presence (
+    username TEXT PRIMARY KEY,
+    role TEXT NOT NULL,
+    last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`;
 
-  await sql`
-    ALTER TABLE deleted_items
-    ADD COLUMN IF NOT EXISTS label TEXT
-  `;
+  await db`CREATE INDEX IF NOT EXISTS viewport_deleted_lookup_idx ON viewport_deleted_items(username, scope)`;
+  await db`CREATE INDEX IF NOT EXISTS viewport_chat_created_idx ON viewport_chat_messages(created_at DESC)`;
+  await db`CREATE INDEX IF NOT EXISTS viewport_blocks_lookup_idx ON viewport_board_blocks(username, board)`;
 
-  await sql`
-    ALTER TABLE deleted_items
-    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()
-  `;
-
-  await sql`
-    UPDATE deleted_items
-    SET scope = 'chan'
-    WHERE scope IS NULL OR scope = ''
-  `;
-
-  await sql`
-    UPDATE deleted_items
-    SET item_key = id
-    WHERE item_key IS NULL OR item_key = ''
-  `;
-
-  await sql`
-    UPDATE deleted_items
-    SET created_at = NOW()
-    WHERE created_at IS NULL
-  `;
-
-  await sql`
-    ALTER TABLE deleted_items
-    ALTER COLUMN scope SET NOT NULL
-  `;
-
-  await sql`
-    ALTER TABLE deleted_items
-    ALTER COLUMN item_key SET NOT NULL
-  `;
-
-  await sql`
-    ALTER TABLE deleted_items
-    ALTER COLUMN created_at SET NOT NULL
-  `;
-
-  await sql`
-    ALTER TABLE deleted_items
-    ALTER COLUMN created_at SET DEFAULT NOW()
-  `;
-
-  await sql`
-    CREATE INDEX IF NOT EXISTS deleted_items_scope_idx
-    ON deleted_items(scope)
-  `;
-
-  await sql`
-    CREATE UNIQUE INDEX IF NOT EXISTS deleted_items_scope_item_key_idx
-    ON deleted_items(scope, item_key)
-  `;
+  schemaReady = true;
 }
 
-export async function listDeleted(scope: string): Promise<DeletedRow[]> {
-  const sql = getSql();
-
-  if (!sql) {
-    return [];
-  }
-
-  const safeScope = cleanScope(scope);
-
-  await ensureDeletedTable();
-
-  const rows = await sql`
-    SELECT item_key, label, created_at::text
-    FROM deleted_items
-    WHERE scope = ${safeScope}
-    ORDER BY created_at DESC
-  `;
-
-  return rows as DeletedRow[];
+export async function listDeleted(username: string, scope: string): Promise<DeletedRow[]> {
+  const db = sql();
+  if (!db) return [];
+  await ensureSchema();
+  return await db`SELECT item_key, label, created_at::text FROM viewport_deleted_items WHERE username=${cleanUser(username)} AND scope=${cleanScope(scope)} ORDER BY created_at DESC` as DeletedRow[];
 }
 
-export async function addDeleted(scope: string, itemKey: string, label?: string) {
-  const sql = getSql();
+export async function addDeleted(username: string, scope: string, itemKey: string, label?: string) {
+  const db = sql();
+  if (!db) throw new Error("DATABASE_URL is not set");
+  await ensureSchema();
+  await db`INSERT INTO viewport_deleted_items(username, scope, item_key, label)
+    VALUES(${cleanUser(username)}, ${cleanScope(scope)}, ${itemKey.slice(0, 600)}, ${label?.slice(0, 300) || null})
+    ON CONFLICT(username, scope, item_key) DO UPDATE SET label=COALESCE(EXCLUDED.label, viewport_deleted_items.label)`;
+}
 
-  if (!sql) {
-    throw new Error("DATABASE_URL is not set");
+export async function listBoardBlocks(username: string): Promise<BoardBlock[]> {
+  const db = sql();
+  if (!db) return [];
+  await ensureSchema();
+  await db`DELETE FROM viewport_board_blocks WHERE expires_at IS NOT NULL AND expires_at <= NOW()`;
+  return await db`SELECT board, expires_at::text, created_at::text FROM viewport_board_blocks WHERE username=${cleanUser(username)} ORDER BY created_at DESC` as BoardBlock[];
+}
+
+export async function setBoardBlock(username: string, boardInput: string, days: number | null) {
+  const db = sql();
+  if (!db) throw new Error("DATABASE_URL is not set");
+  await ensureSchema();
+  const board = cleanBoard(boardInput);
+  if (!board) throw new Error("Bad board");
+  if (days === null) {
+    await db`INSERT INTO viewport_board_blocks(username, board, expires_at) VALUES(${cleanUser(username)}, ${board}, NULL)
+      ON CONFLICT(username, board) DO UPDATE SET expires_at=NULL, created_at=NOW()`;
+  } else {
+    await db`INSERT INTO viewport_board_blocks(username, board, expires_at) VALUES(${cleanUser(username)}, ${board}, NOW() + (${String(days)} || ' days')::interval)
+      ON CONFLICT(username, board) DO UPDATE SET expires_at=NOW() + (${String(days)} || ' days')::interval, created_at=NOW()`;
   }
+}
 
-  const safeScope = cleanScope(scope);
-  const safeItemKey = itemKey.slice(0, 500);
-  const id = `${safeScope}:${safeItemKey}`;
+export async function isBoardBlocked(username: string, boardInput: string) {
+  const db = sql();
+  if (!db) return false;
+  await ensureSchema();
+  const board = cleanBoard(boardInput);
+  const rows = await db`SELECT board FROM viewport_board_blocks WHERE username=${cleanUser(username)} AND board=${board} AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1`;
+  return rows.length > 0;
+}
 
-  await ensureDeletedTable();
+export async function touchPresence(username: string, role: string) {
+  const db = sql();
+  if (!db) return;
+  await ensureSchema();
+  await db`INSERT INTO viewport_presence(username, role, last_seen) VALUES(${cleanUser(username)}, ${role}, NOW())
+    ON CONFLICT(username) DO UPDATE SET role=EXCLUDED.role, last_seen=NOW()`;
+}
 
-  await sql`
-    INSERT INTO deleted_items (id, scope, item_key, label)
-    VALUES (${id}, ${safeScope}, ${safeItemKey}, ${label || null})
-    ON CONFLICT (scope, item_key)
-    DO UPDATE SET
-      label = COALESCE(EXCLUDED.label, deleted_items.label)
-  `;
+export async function listPresence(): Promise<Presence[]> {
+  const db = sql();
+  if (!db) return [];
+  await ensureSchema();
+  const rows = await db`SELECT username, role, (last_seen > NOW() - INTERVAL '35 seconds') AS online, last_seen::text FROM viewport_presence ORDER BY username ASC`;
+  return rows as Presence[];
+}
+
+export async function listChatMessages(limit = 80): Promise<ChatMessage[]> {
+  const db = sql();
+  if (!db) return [];
+  await ensureSchema();
+  const rows = await db`SELECT id::int, username, role, body, attachments, created_at::text FROM viewport_chat_messages ORDER BY id DESC LIMIT ${Math.max(1, Math.min(limit, 200))}`;
+  return (rows as ChatMessage[]).reverse();
+}
+
+export async function addChatMessage(username: string, role: string, body: string, attachments: ChatAttachment[]) {
+  const db = sql();
+  if (!db) throw new Error("DATABASE_URL is not set");
+  await ensureSchema();
+  const rows = await db`INSERT INTO viewport_chat_messages(username, role, body, attachments)
+    VALUES(${cleanUser(username)}, ${role}, ${body.slice(0, 4000)}, ${JSON.stringify(attachments)}::jsonb)
+    RETURNING id::int, username, role, body, attachments, created_at::text`;
+  return rows[0] as ChatMessage;
 }

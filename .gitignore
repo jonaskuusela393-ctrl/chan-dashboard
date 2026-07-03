@@ -1,6 +1,5 @@
-.next
 node_modules
-.env
-.env.local
-.vercel
-movies
+.next
+.env*.local
+.DS_Store
+pnpm-lock.yaml

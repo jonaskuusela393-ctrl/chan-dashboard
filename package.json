@@ -1,5 +1,5 @@
 {
-  "name": "chan-dashboard-rebuild",
+  "name": "private-terminal-dashboard",
   "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.13.1",
@@ -9,15 +9,11 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
-    "start": "next start -p 3000",
-    "local:movies": "node local/movie-server.mjs",
-    "local:llm": "node local/llm-bridge.mjs"
+    "start": "next start -p 3000"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",
     "@types/sanitize-html": "2.16.0",
-    "cheerio": "1.1.2",
-    "he": "1.2.0",
     "next": "16.2.10",
     "react": "19.2.0",
     "react-dom": "19.2.0",
