@@ -509,12 +509,14 @@ export default function ChanClient({ username }: { username: string }) {
                 </div>
 
                 <button
-                  className="danger"
+                  className="danger icon-button"
+                  aria-label="hide thread forever"
+                  title="hide thread forever"
                   onClick={() =>
                     remove(threadKey(activeBoard, thread.no), `${activeBoard} thread ${thread.no}`)
                   }
                 >
-                  delete thread
+                  ×
                 </button>
               </div>
 
@@ -542,7 +544,7 @@ export default function ChanClient({ username }: { username: string }) {
             <div className="panel stack">
               <div className="spread">
                 <h2>{image.label}</h2>
-                <button onClick={() => setImage(null)}>close</button>
+                <button className="icon-button" aria-label="close media" title="close media" onClick={() => setImage(null)}>×</button>
               </div>
 
               {image.kind === "video" ? (
@@ -574,7 +576,9 @@ export default function ChanClient({ username }: { username: string }) {
                 </button>
 
                 <button
-                  className="danger"
+                  className="danger icon-button"
+                  aria-label="hide whole thread forever"
+                  title="hide whole thread forever"
                   onClick={() =>
                     remove(
                       threadKey(activeBoard, selected.no),
@@ -582,15 +586,15 @@ export default function ChanClient({ username }: { username: string }) {
                     )
                   }
                 >
-                  delete whole thread
+                  ×
                 </button>
 
                 <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-                  top
+                  ↑
                 </button>
 
                 <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}>
-                  bottom
+                  ↓
                 </button>
               </div>
             )}
@@ -607,7 +611,7 @@ export default function ChanClient({ username }: { username: string }) {
           {shownPosts.map((post) => (
             <article className="post stack" key={post.no}>
               <div className="spread">
-                <div>
+                <div className="minw0">
                   <span className="badge">#{post.no}</span>{" "}
                   <span className="muted small">
                     {post.name || "Anonymous"} · {post.now || ""}
@@ -615,12 +619,14 @@ export default function ChanClient({ username }: { username: string }) {
                 </div>
 
                 <button
-                  className="danger"
+                  className="danger icon-button"
+                  aria-label="hide post forever"
+                  title="hide post forever"
                   onClick={() =>
                     remove(postKey(activeBoard, post.no), `${activeBoard} post ${post.no}`)
                   }
                 >
-                  delete post
+                  ×
                 </button>
               </div>
 
