@@ -16,6 +16,15 @@ CREATE TABLE IF NOT EXISTS viewport_board_blocks (
   PRIMARY KEY(username, board)
 );
 
+CREATE TABLE IF NOT EXISTS viewport_disabled_targets (
+  username TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  target TEXT NOT NULL,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY(username, scope, target)
+);
+
 CREATE TABLE IF NOT EXISTS viewport_chat_messages (
   id BIGSERIAL PRIMARY KEY,
   username TEXT NOT NULL,
@@ -34,3 +43,4 @@ CREATE TABLE IF NOT EXISTS viewport_presence (
 CREATE INDEX IF NOT EXISTS viewport_deleted_lookup_idx ON viewport_deleted_items(username, scope);
 CREATE INDEX IF NOT EXISTS viewport_chat_created_idx ON viewport_chat_messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS viewport_blocks_lookup_idx ON viewport_board_blocks(username, board);
+CREATE INDEX IF NOT EXISTS viewport_disabled_targets_lookup_idx ON viewport_disabled_targets(username, scope, target);

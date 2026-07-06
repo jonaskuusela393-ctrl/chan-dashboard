@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BOARD_GROUPS } from "@/lib/chan";
 
 type Thread = {
   no: number;
@@ -28,13 +29,11 @@ type Block = {
   created_at: string;
 };
 
-type ImageState =
-  | {
-      url: string;
-      label: string;
-      kind: "image" | "video";
-    }
-  | null;
+type MediaState = {
+  url: string;
+  label: string;
+  kind: "image" | "video";
+} | null;
 
 const SCOPE = "chan";
 
@@ -48,6 +47,10 @@ function threadKey(board: string, no: number) {
 
 function postKey(board: string, no: number) {
   return `post:${board}:${no}`;
+}
+
+function mediaKey(board: string, no: number) {
+  return `${board}:${no}`;
 }
 
 function fileLabel(item: { tim?: number; ext?: string; filename?: string }) {
@@ -100,15 +103,14 @@ export default function ChanClient({ username }: { username: string }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState(`ready as ${username}`);
   const [loading, setLoading] = useState(false);
-  const [image, setImage] = useState<ImageState>(null);
+  const [openMedia, setOpenMedia] = useState<Record<string, MediaState>>({});
 
-  const blockedBoards = useMemo(() => {
-    return new Set(blocks.map((block) => block.board));
-  }, [blocks]);
+  const viewRef = useRef<HTMLElement | null>(null);
 
+  const blockedBoards = useMemo(() => new Set(blocks.map((block) => block.board)), [blocks]);
   const activeBlocked = blockedBoards.has(activeBoard);
 
-  async function fetchDeleted() {
+  async function loadDeleted() {
     const response = await fetch(`/api/deleted?scope=${SCOPE}`, {
       cache: "no-store",
     });
@@ -120,14 +122,16 @@ export default function ChanClient({ username }: { username: string }) {
     }
 
     const nextDeleted = new Set<string>(
-      Array.isArray(data.keys) ? data.keys.filter((key: unknown) => typeof key === "string") : []
+      Array.isArray(data.keys)
+        ? data.keys.filter((key: unknown) => typeof key === "string")
+        : []
     );
 
     setDeleted(nextDeleted);
     return nextDeleted;
   }
 
-  async function fetchBlocks() {
+  async function loadBlocks() {
     const response = await fetch("/api/chan/blocks", {
       cache: "no-store",
     });
@@ -146,8 +150,8 @@ export default function ChanClient({ username }: { username: string }) {
 
   async function syncAll() {
     try {
-      await Promise.all([fetchDeleted(), fetchBlocks()]);
-      setStatus("synced deletes and disabled boards");
+      const [nextDeleted, nextBlocks] = await Promise.all([loadDeleted(), loadBlocks()]);
+      setStatus(`synced · deleted ${nextDeleted.size} · disabled boards ${nextBlocks.length}`);
     } catch (error) {
       setStatus(errorMessage(error, "sync failed"));
     }
@@ -157,7 +161,7 @@ export default function ChanClient({ username }: { username: string }) {
     setLoading(true);
 
     try {
-      const [, freshBlocks] = await Promise.all([fetchDeleted(), fetchBlocks()]);
+      const [, freshBlocks] = await Promise.all([loadDeleted(), loadBlocks()]);
       await loadCatalog("g", false, freshBlocks);
     } catch (error) {
       setStatus(errorMessage(error, "boot failed"));
@@ -178,7 +182,7 @@ export default function ChanClient({ username }: { username: string }) {
       setLoading(true);
     }
 
-    setImage(null);
+    setOpenMedia({});
     setSelected(null);
     setPosts([]);
     setStatus(`loading /${board}/...`);
@@ -186,7 +190,7 @@ export default function ChanClient({ username }: { username: string }) {
     try {
       const [, freshBlocks] = knownBlocks
         ? [deleted, knownBlocks]
-        : await Promise.all([fetchDeleted(), fetchBlocks()]);
+        : await Promise.all([loadDeleted(), loadBlocks()]);
 
       const disabled = freshBlocks.some((block) => block.board === board);
 
@@ -232,12 +236,12 @@ export default function ChanClient({ username }: { username: string }) {
 
     setSelected(thread);
     setPosts([]);
-    setImage(null);
+    setOpenMedia({});
     setLoading(true);
     setStatus(`opening #${thread.no}...`);
 
     try {
-      await fetchDeleted();
+      await loadDeleted();
 
       const response = await fetch(
         `/api/chan/thread?board=${encodeURIComponent(activeBoard)}&no=${thread.no}`,
@@ -254,6 +258,10 @@ export default function ChanClient({ username }: { username: string }) {
 
       setPosts(nextPosts);
       setStatus(`thread #${thread.no} · loaded ${nextPosts.length} total posts`);
+
+      window.setTimeout(() => {
+        viewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
     } catch (error) {
       setStatus(errorMessage(error, "thread failed"));
     } finally {
@@ -261,7 +269,7 @@ export default function ChanClient({ username }: { username: string }) {
     }
   }
 
-  async function remove(key: string, why: string) {
+  async function remove(key: string, label: string) {
     setDeleted((old) => {
       const next = new Set(old);
       next.add(key);
@@ -277,7 +285,7 @@ export default function ChanClient({ username }: { username: string }) {
         body: JSON.stringify({
           scope: SCOPE,
           key,
-          label: why,
+          label,
         }),
       });
 
@@ -290,13 +298,13 @@ export default function ChanClient({ username }: { username: string }) {
       if (selected && key === threadKey(activeBoard, selected.no)) {
         setSelected(null);
         setPosts([]);
-        setImage(null);
+        setOpenMedia({});
       }
 
-      setStatus(`deleted: ${why}`);
+      setStatus(`deleted: ${label}`);
     } catch (error) {
       setStatus(errorMessage(error, "delete failed"));
-      await fetchDeleted();
+      await loadDeleted();
     }
   }
 
@@ -337,7 +345,7 @@ export default function ChanClient({ username }: { username: string }) {
         setThreads([]);
         setSelected(null);
         setPosts([]);
-        setImage(null);
+        setOpenMedia({});
       }
 
       setStatus(
@@ -352,7 +360,18 @@ export default function ChanClient({ username }: { username: string }) {
     }
   }
 
-  function viewMedia(item: Thread | Post) {
+  function toggleMedia(item: Thread | Post) {
+    const key = mediaKey(activeBoard, item.no);
+    const existing = openMedia[key];
+
+    if (existing) {
+      setOpenMedia((old) => ({
+        ...old,
+        [key]: null,
+      }));
+      return;
+    }
+
     const url = mediaUrl(activeBoard, item);
     const name = fileLabel(item);
 
@@ -363,11 +382,39 @@ export default function ChanClient({ username }: { username: string }) {
 
     const kind = /\.(webm|mp4)$/i.test(name) ? "video" : "image";
 
-    setImage({
-      url,
-      label: name,
-      kind,
-    });
+    setOpenMedia((old) => ({
+      ...old,
+      [key]: {
+        url,
+        label: name,
+        kind,
+      },
+    }));
+  }
+
+  function renderInlineMedia(item: Thread | Post) {
+    const media = openMedia[mediaKey(activeBoard, item.no)];
+
+    if (!media) return null;
+
+    return (
+      <div className="inline-media stack">
+        <div className="spread">
+          <span className="badge">{media.label}</span>
+          <button onClick={() => toggleMedia(item)}>close file</button>
+        </div>
+
+        {media.kind === "video" ? (
+          <video className="media" src={media.url} controls />
+        ) : (
+          <img className="fullimg" src={media.url} alt={media.label} loading="lazy" />
+        )}
+
+        <a className="buttonlike" href={media.url} target="_blank" rel="noreferrer">
+          open file tab
+        </a>
+      </div>
+    );
   }
 
   useEffect(() => {
@@ -399,10 +446,10 @@ export default function ChanClient({ username }: { username: string }) {
         <div className="spread">
           <div>
             <p className="badge">/{activeBoard}/</p>
-            <h1>4chan viewport</h1>
+            <h1 className="terminal-title">4chan viewport</h1>
             <p className="muted">
-              Read-only. Per-user deletes and per-user board disables. No thumbnails
-              load unless you click a file.
+              Read-only. Per-user deletes and per-user board disables. Files open inline
+              next to the button you clicked.
             </p>
           </div>
 
@@ -410,7 +457,6 @@ export default function ChanClient({ username }: { username: string }) {
             <button onClick={() => loadCatalog(activeBoard)} disabled={loading || activeBlocked}>
               reload
             </button>
-
             <button onClick={syncAll} disabled={loading}>
               sync
             </button>
@@ -440,21 +486,43 @@ export default function ChanClient({ username }: { username: string }) {
           />
         </div>
 
+        <details className="panel stack">
+          <summary>4chan board list</summary>
+          <p className="muted small">
+            Tap a board to select and load it. Disabled boards stay hidden for your account.
+          </p>
+          {BOARD_GROUPS.map((group) => (
+            <div className="stack" key={group.title}>
+              <h3>{group.title}</h3>
+              <div className="board-grid">
+                {group.boards.map(([board, label]) => (
+                  <button
+                    className="board-chip"
+                    key={`${group.title}-${board}`}
+                    onClick={() => loadCatalog(board)}
+                    disabled={loading || blockedBoards.has(board)}
+                    title={label}
+                  >
+                    /{board}/ {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </details>
+
         <div className="row">
           <button className="warn" onClick={() => disableBoard("1")} disabled={loading}>
-            disable board 1 day
+            disable 1 day
           </button>
-
           <button className="warn" onClick={() => disableBoard("7")} disabled={loading}>
             disable 7 days
           </button>
-
           <button className="warn" onClick={() => disableBoard("30")} disabled={loading}>
             disable 30 days
           </button>
-
           <button className="danger" onClick={() => disableBoard("permanent")} disabled={loading}>
-            disable permanent
+            disable forever
           </button>
         </div>
 
@@ -467,7 +535,6 @@ export default function ChanClient({ username }: { username: string }) {
       {blocks.length > 0 && (
         <section className="panel stack">
           <h2>Disabled boards</h2>
-
           <div className="row">
             {blocks.map((block) => (
               <span className="badge warn" key={block.board}>
@@ -478,94 +545,15 @@ export default function ChanClient({ username }: { username: string }) {
         </section>
       )}
 
-      <div className="two">
-        <section className="stack">
-          <div className="panel spread">
-            <div>
-              <h2>Threads</h2>
-              <p className="muted small">
-                showing {shownThreads.length}/{threads.length}
-              </p>
-            </div>
-
-            <span className="badge">catalog</span>
-          </div>
-
-          {shownThreads.length === 0 && !loading && (
-            <div className="panel">
-              <p className="muted">
-                No threads shown. Load a board, clear filter, or check disabled boards.
-              </p>
-            </div>
-          )}
-
-          {shownThreads.map((thread) => (
-            <article className="thread stack" key={thread.no}>
-              <div className="spread">
-                <div className="row">
-                  <button onClick={() => openThread(thread)}>open #{thread.no}</button>
-                  {thread.sticky && <span className="badge warn">sticky</span>}
-                  {thread.closed && <span className="badge danger">closed</span>}
-                </div>
-
-                <button
-                  className="danger icon-button"
-                  aria-label="hide thread forever"
-                  title="hide thread forever"
-                  onClick={() =>
-                    remove(threadKey(activeBoard, thread.no), `${activeBoard} thread ${thread.no}`)
-                  }
-                >
-                  ×
-                </button>
-              </div>
-
-              <div>
-                <h3>{thread.sub || "(no subject)"}</h3>
-                <p className="muted small">
-                  {thread.name || "Anonymous"} · replies {thread.replies ?? 0} · images{" "}
-                  {thread.images ?? 0} · page {thread.page ?? "?"}
-                </p>
-              </div>
-
-              {thread.tim && (
-                <div className="row">
-                  <button onClick={() => viewMedia(thread)}>view {fileLabel(thread)}</button>
-                </div>
-              )}
-
-              <div className="html" dangerouslySetInnerHTML={{ __html: thread.com || "" }} />
-            </article>
-          ))}
-        </section>
-
-        <section className="stack viewer">
-          {image && (
-            <div className="panel stack">
-              <div className="spread">
-                <h2>{image.label}</h2>
-                <button className="icon-button" aria-label="close media" title="close media" onClick={() => setImage(null)}>×</button>
-              </div>
-
-              {image.kind === "video" ? (
-                <video className="media" src={image.url} controls />
-              ) : (
-                <img className="fullimg" src={image.url} alt={image.label} />
-              )}
-
-              <a className="buttonlike" href={image.url} target="_blank" rel="noreferrer">
-                open file tab
-              </a>
-            </div>
-          )}
-
+      <div className="chan-layout">
+        <section className="stack chan-view" ref={viewRef}>
           <div className="panel stack">
             <div>
               <h2>{selected ? `Thread #${selected.no}` : "Open a thread"}</h2>
               <p className="muted small">
                 {selected
-                  ? `showing ${shownPosts.length}/${posts.length} loaded posts after your deletes`
-                  : "Click a thread on the left. Long threads now expand down the page instead of being trapped inside a small scroll box."}
+                  ? `showing ${shownPosts.length}/${posts.length} loaded replies after your deletes`
+                  : "On mobile, opened threads appear here above the catalog so you do not have to scroll through every thread."}
               </p>
             </div>
 
@@ -574,27 +562,13 @@ export default function ChanClient({ username }: { username: string }) {
                 <button onClick={() => openThread(selected)} disabled={loading}>
                   reload thread
                 </button>
-
                 <button
-                  className="danger icon-button"
-                  aria-label="hide whole thread forever"
-                  title="hide whole thread forever"
+                  className="danger"
                   onClick={() =>
-                    remove(
-                      threadKey(activeBoard, selected.no),
-                      `${activeBoard} thread ${selected.no}`
-                    )
+                    remove(threadKey(activeBoard, selected.no), `${activeBoard} thread ${selected.no}`)
                   }
                 >
-                  ×
-                </button>
-
-                <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-                  ↑
-                </button>
-
-                <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}>
-                  ↓
+                  delete whole thread
                 </button>
               </div>
             )}
@@ -611,7 +585,7 @@ export default function ChanClient({ username }: { username: string }) {
           {shownPosts.map((post) => (
             <article className="post stack" key={post.no}>
               <div className="spread">
-                <div className="minw0">
+                <div>
                   <span className="badge">#{post.no}</span>{" "}
                   <span className="muted small">
                     {post.name || "Anonymous"} · {post.now || ""}
@@ -619,24 +593,85 @@ export default function ChanClient({ username }: { username: string }) {
                 </div>
 
                 <button
-                  className="danger icon-button"
-                  aria-label="hide post forever"
-                  title="hide post forever"
-                  onClick={() =>
-                    remove(postKey(activeBoard, post.no), `${activeBoard} post ${post.no}`)
-                  }
+                  className="danger"
+                  onClick={() => remove(postKey(activeBoard, post.no), `${activeBoard} post ${post.no}`)}
                 >
-                  ×
+                  delete post
                 </button>
               </div>
 
               {post.tim && (
-                <div className="row">
-                  <button onClick={() => viewMedia(post)}>view {fileLabel(post)}</button>
+                <div className="stack">
+                  <button onClick={() => toggleMedia(post)}>
+                    {openMedia[mediaKey(activeBoard, post.no)] ? "close" : "view"} {fileLabel(post)}
+                  </button>
+                  {renderInlineMedia(post)}
                 </div>
               )}
 
               <div className="html" dangerouslySetInnerHTML={{ __html: post.com || "" }} />
+            </article>
+          ))}
+        </section>
+
+        <section className="stack chan-list">
+          <div className="panel spread">
+            <div>
+              <h2>Threads</h2>
+              <p className="muted small">
+                showing {shownThreads.length}/{threads.length}
+              </p>
+            </div>
+            <span className="badge">catalog</span>
+          </div>
+
+          {shownThreads.length === 0 && !loading && (
+            <div className="panel">
+              <p className="muted">
+                No threads shown. Load a board, clear filter, or check disabled boards.
+              </p>
+            </div>
+          )}
+
+          {shownThreads.map((thread) => (
+            <article className="thread stack" key={thread.no}>
+              <div className="spread">
+                <div className="row">
+                  <button onClick={() => openThread(thread)}>
+                    {selected?.no === thread.no ? "opened" : "open"} #{thread.no}
+                  </button>
+                  {thread.sticky && <span className="badge warn">sticky</span>}
+                  {thread.closed && <span className="badge danger">closed</span>}
+                </div>
+
+                <button
+                  className="danger"
+                  onClick={() =>
+                    remove(threadKey(activeBoard, thread.no), `${activeBoard} thread ${thread.no}`)
+                  }
+                >
+                  delete thread
+                </button>
+              </div>
+
+              <div>
+                <h3>{thread.sub || "(no subject)"}</h3>
+                <p className="muted small">
+                  {thread.name || "Anonymous"} · replies {thread.replies ?? 0} · images{" "}
+                  {thread.images ?? 0} · page {thread.page ?? "?"}
+                </p>
+              </div>
+
+              {thread.tim && (
+                <div className="stack">
+                  <button onClick={() => toggleMedia(thread)}>
+                    {openMedia[mediaKey(activeBoard, thread.no)] ? "close" : "view"} {fileLabel(thread)}
+                  </button>
+                  {renderInlineMedia(thread)}
+                </div>
+              )}
+
+              <div className="html" dangerouslySetInnerHTML={{ __html: thread.com || "" }} />
             </article>
           ))}
         </section>

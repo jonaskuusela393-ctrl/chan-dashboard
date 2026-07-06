@@ -15,6 +15,10 @@ type Item = {
 
 const SCOPE = "youtube";
 
+function videoKey(id: string) {
+  return `video:${id}`;
+}
+
 function extract(input: string) {
   const raw = input.trim();
 
@@ -54,24 +58,19 @@ async function readJson(response: Response) {
 }
 
 function date(value: string) {
-  const nextDate = new Date(value);
-
-  return Number.isNaN(nextDate.getTime()) ? "" : nextDate.toLocaleDateString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleDateString();
 }
 
-function num(value?: string) {
-  const nextNumber = Number(value);
+function numberText(value?: string) {
+  const parsed = Number(value);
 
-  return Number.isFinite(nextNumber)
+  return Number.isFinite(parsed)
     ? new Intl.NumberFormat(undefined, {
         notation: "compact",
         maximumFractionDigits: 1,
-      }).format(nextNumber)
+      }).format(parsed)
     : "?";
-}
-
-function videoKey(id: string) {
-  return `video:${id}`;
 }
 
 function errorMessage(error: unknown, fallback: string) {
@@ -80,24 +79,32 @@ function errorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function itemLine(item: Item) {
+  return `${item.channelTitle || "unknown"} · ${date(item.publishedAt) || "unknown date"} · ${
+    item.duration || "?:??"
+  } · views ${numberText(item.viewCount)}`;
+}
+
 export default function YouTubeClient() {
   const [query, setQuery] = useState("");
   const [direct, setDirect] = useState("");
+
   const [items, setItems] = useState<Item[]>([]);
   const [selected, setSelected] = useState<Item | null>(null);
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const [token, setToken] = useState("");
+
+  const [nextPageToken, setNextPageToken] = useState("");
   const [status, setStatus] = useState("text-only, no thumbnails");
   const [loading, setLoading] = useState(false);
-  const [player, setPlayer] = useState(false);
+  const [playerOpen, setPlayerOpen] = useState(false);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
 
   const videoId = useMemo(() => extract(direct), [direct]);
 
-  const shownItems = useMemo(() => {
+  const visibleItems = useMemo(() => {
     return items.filter((item) => !hidden.has(videoKey(item.id)));
   }, [items, hidden]);
 
-  async function fetchHidden() {
+  async function loadHidden() {
     const response = await fetch(`/api/deleted?scope=${SCOPE}`, {
       cache: "no-store",
     });
@@ -109,95 +116,36 @@ export default function YouTubeClient() {
     }
 
     const nextHidden = new Set<string>(
-      Array.isArray(data.keys) ? data.keys.filter((key: unknown) => typeof key === "string") : []
+      Array.isArray(data.keys)
+        ? data.keys.filter((key: unknown) => typeof key === "string")
+        : []
     );
 
     setHidden(nextHidden);
     return nextHidden;
   }
 
-  async function search(page = "") {
-    if (!query.trim() || loading) return;
-
-    setLoading(true);
-    setStatus(page ? "loading more..." : "searching...");
-
+  async function syncHidden() {
     try {
-      await fetchHidden();
-
-      const response = await fetch(
-        `/api/youtube/search?q=${encodeURIComponent(query.trim())}&pageToken=${encodeURIComponent(page)}`,
-        { cache: "no-store" }
-      );
-
-      const data = await readJson(response);
-
-      if (!response.ok) {
-        throw new Error(data.error || "search failed");
-      }
-
-      const newItems: Item[] = Array.isArray(data.items) ? data.items : [];
-
-      setItems((oldItems) => (page ? [...oldItems, ...newItems] : newItems));
-      setToken(data.nextPageToken || "");
-      setSelected(null);
-      setPlayer(false);
-      setStatus(`${page ? shownItems.length + newItems.length : newItems.length} results loaded`);
+      const nextHidden = await loadHidden();
+      setStatus(`synced hidden videos · ${nextHidden.size} hidden forever`);
     } catch (error) {
-      setStatus(errorMessage(error, "search failed"));
-    } finally {
-      setLoading(false);
+      setStatus(errorMessage(error, "sync hidden failed"));
     }
   }
 
-  async function open(id: string) {
-    if (!id || loading) return;
-
-    const key = videoKey(id);
-
-    if (hidden.has(key)) {
-      setStatus("that video is hidden forever");
-      return;
-    }
-
-    setLoading(true);
-    setPlayer(false);
-    setStatus("loading video text...");
-
-    try {
-      const response = await fetch(`/api/youtube/video?id=${encodeURIComponent(id)}`, {
-        cache: "no-store",
-      });
-
-      const data = await readJson(response);
-
-      if (!response.ok) {
-        throw new Error(data.error || "video failed");
-      }
-
-      setSelected(data);
-      setStatus("video details loaded");
-    } catch (error) {
-      setStatus(errorMessage(error, "video failed"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function hideVideo(item: Item) {
+  async function hideForever(item: Item) {
     const key = videoKey(item.id);
 
-    setHidden((oldHidden) => {
-      const nextHidden = new Set(oldHidden);
-      nextHidden.add(key);
-      return nextHidden;
+    setHidden((old) => {
+      const next = new Set(old);
+      next.add(key);
+      return next;
     });
-
-    setItems((oldItems) => oldItems.filter((oldItem) => oldItem.id !== item.id));
 
     if (selected?.id === item.id) {
       setSelected(null);
-      setPlayer(false);
+      setPlayerOpen(false);
     }
 
     try {
@@ -209,7 +157,7 @@ export default function YouTubeClient() {
         body: JSON.stringify({
           scope: SCOPE,
           key,
-          label: `${item.channelTitle || "YouTube"} - ${item.title || item.id}`,
+          label: `${item.title || item.id} · ${item.channelTitle || "YouTube"}`,
         }),
       });
 
@@ -222,32 +170,122 @@ export default function YouTubeClient() {
       setStatus(`hidden forever: ${item.title || item.id}`);
     } catch (error) {
       setStatus(errorMessage(error, "hide failed"));
-      await fetchHidden().catch(() => undefined);
+      await loadHidden();
     }
   }
 
+  async function search(pageToken = "") {
+    const q = query.trim();
+
+    if (!q || loading) return;
+
+    setLoading(true);
+    setStatus(pageToken ? "loading next page..." : "searching YouTube text results...");
+
+    try {
+      const currentHidden = await loadHidden();
+
+      const response = await fetch(
+        `/api/youtube/search?q=${encodeURIComponent(q)}&pageToken=${encodeURIComponent(pageToken)}`,
+        { cache: "no-store" }
+      );
+
+      const data = await readJson(response);
+
+      if (!response.ok) {
+        throw new Error(data.error || "search failed");
+      }
+
+      const newItems: Item[] = Array.isArray(data.items) ? data.items : [];
+
+      setItems((oldItems) => {
+        const merged: Item[] = pageToken ? [...oldItems, ...newItems] : newItems;
+        const visibleCount = merged.filter((item) => !currentHidden.has(videoKey(item.id))).length;
+        setStatus(
+          `${visibleCount}/${merged.length} visible · ${newItems.length} loaded this page · use more results for next page`
+        );
+        return merged;
+      });
+
+      setNextPageToken(data.nextPageToken || "");
+    } catch (error) {
+      setStatus(errorMessage(error, "search failed"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function open(idInput: string) {
+    const id = extract(idInput) || idInput.trim();
+
+    if (!id || loading) return;
+
+    setLoading(true);
+    setPlayerOpen(false);
+    setStatus("loading video text...");
+
+    try {
+      const currentHidden = await loadHidden();
+
+      if (currentHidden.has(videoKey(id))) {
+        setStatus("that video is hidden forever for your account");
+        return;
+      }
+
+      const response = await fetch(`/api/youtube/video?id=${encodeURIComponent(id)}`, {
+        cache: "no-store",
+      });
+
+      const data = await readJson(response);
+
+      if (!response.ok) {
+        throw new Error(data.error || "video failed");
+      }
+
+      if (currentHidden.has(videoKey(data.id))) {
+        setStatus("that video is hidden forever for your account");
+        return;
+      }
+
+      setSelected(data);
+      setStatus("video details loaded");
+    } catch (error) {
+      setStatus(errorMessage(error, "video failed"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function clearResults() {
+    setItems([]);
+    setSelected(null);
+    setNextPageToken("");
+    setPlayerOpen(false);
+    setStatus("results cleared · hidden videos stayed hidden");
+  }
+
   useEffect(() => {
-    fetchHidden()
-      .then((nextHidden) => setStatus(`text-only, no thumbnails · ${nextHidden.size} hidden forever`))
-      .catch((error) => setStatus(errorMessage(error, "hidden videos sync failed")));
+    void loadHidden().catch((error) => setStatus(errorMessage(error, "hidden videos load failed")));
   }, []);
 
   return (
     <div className="stack">
       <section className="panel stack">
         <p className="badge">YOUTUBE TEXT</p>
-        <h1>YouTube text browser</h1>
+        <h1 className="terminal-title">YouTube text browser</h1>
         <p className="muted">
-          No thumbnails are loaded. Hidden videos stay hidden forever for your account.
-          The player only loads after pressing open player.
+          No thumbnails are loaded. Results include duration when YouTube returns it.
+          Hidden videos are permanent per account.
         </p>
 
-        <div className="row controls-row">
+        <div className="row">
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") void search();
+              if (event.key === "Enter") {
+                void search();
+              }
             }}
             placeholder="search YouTube"
           />
@@ -256,32 +294,29 @@ export default function YouTubeClient() {
             search
           </button>
 
-          {token && (
-            <button onClick={() => search(token)} disabled={loading}>
-              more
+          {nextPageToken && (
+            <button onClick={() => search(nextPageToken)} disabled={loading}>
+              more results
             </button>
           )}
 
-          <button
-            aria-label="clear"
-            title="clear"
-            onClick={() => {
-              setItems([]);
-              setSelected(null);
-              setToken("");
-              setPlayer(false);
-            }}
-          >
-            ×
+          <button onClick={clearResults} disabled={loading}>
+            clear
+          </button>
+
+          <button onClick={syncHidden} disabled={loading}>
+            sync hidden
           </button>
         </div>
 
-        <div className="row controls-row">
+        <div className="row">
           <input
             value={direct}
             onChange={(event) => setDirect(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && videoId) void open(videoId);
+              if (event.key === "Enter" && videoId) {
+                void open(videoId);
+              }
             }}
             placeholder="paste URL or video ID"
           />
@@ -295,41 +330,32 @@ export default function YouTubeClient() {
 
         <p className="muted small">
           Status: {loading ? "loading... " : ""}
-          {status}
+          {status} · hidden {hidden.size}
         </p>
       </section>
 
       {selected && (
         <section className="panel stack">
           <div className="spread">
-            <div className="minw0">
+            <div>
               <span className="badge">{selected.id}</span>
-              <h2>{selected.title}</h2>
+              <h2>{selected.title || "Untitled video"}</h2>
               <p className="muted">
-                {selected.channelTitle} · {date(selected.publishedAt)} · views {num(selected.viewCount)} · likes{" "}
-                {num(selected.likeCount)} · {selected.duration || "?"}
+                {itemLine(selected)} · likes {numberText(selected.likeCount)}
               </p>
             </div>
 
-            <div className="row action-row compact-actions">
-              <button
-                className="danger icon-button"
-                aria-label="hide video forever"
-                title="hide video forever"
-                onClick={() => hideVideo(selected)}
-              >
-                ×
-              </button>
-
-              <button aria-label="close" title="close" className="icon-button" onClick={() => setSelected(null)}>
-                ×
+            <div className="row">
+              <button onClick={() => setSelected(null)}>close</button>
+              <button className="danger" onClick={() => hideForever(selected)}>
+                hide forever
               </button>
             </div>
           </div>
 
           <pre>{selected.description || "No description."}</pre>
 
-          <div className="row controls-row">
+          <div className="row">
             <a
               className="buttonlike"
               href={`https://www.youtube.com/watch?v=${selected.id}`}
@@ -339,19 +365,23 @@ export default function YouTubeClient() {
               open on YouTube
             </a>
 
-            <button onClick={() => navigator.clipboard.writeText(`https://www.youtube.com/watch?v=${selected.id}`)}>
+            <button
+              onClick={() =>
+                navigator.clipboard.writeText(`https://www.youtube.com/watch?v=${selected.id}`)
+              }
+            >
               copy link
             </button>
 
-            <button onClick={() => setPlayer((value) => !value)}>
-              {player ? "close player" : "open player"}
+            <button onClick={() => setPlayerOpen((value) => !value)}>
+              {playerOpen ? "close player" : "open player"}
             </button>
           </div>
 
-          {player && (
+          {playerOpen && (
             <iframe
               src={`https://www.youtube-nocookie.com/embed/${selected.id}`}
-              title={selected.title}
+              title={selected.title || selected.id}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
             />
@@ -364,38 +394,43 @@ export default function YouTubeClient() {
           <div>
             <h2>Results</h2>
             <p className="muted small">
-              showing {shownItems.length}/{items.length} · hidden forever {hidden.size}
+              showing {visibleItems.length}/{items.length} · more results loads the next YouTube page
             </p>
           </div>
 
-          {token && <button onClick={() => search(token)}>more</button>}
+          {nextPageToken && (
+            <button onClick={() => search(nextPageToken)} disabled={loading}>
+              more results
+            </button>
+          )}
         </div>
 
-        {shownItems.length === 0 && !loading && (
+        {visibleItems.length === 0 && !loading && (
           <div className="panel">
-            <p className="muted">No videos shown. Search, load more, or your results may be hidden forever.</p>
+            <p className="muted">
+              No visible results. Search above, load more, or hidden videos may be
+              filtering them.
+            </p>
           </div>
         )}
 
-        {shownItems.map((item) => (
+        {visibleItems.map((item) => (
           <article className="post stack" key={item.id}>
             <div className="spread">
-              <div className="minw0">
-                <h3>{item.title}</h3>
+              <div>
+                <h3>{item.title || "Untitled video"}</h3>
                 <p className="muted small">
-                  {item.channelTitle} · {date(item.publishedAt)} · {item.id} · {item.duration || "?"}
+                  {itemLine(item)} · {item.id}
                 </p>
               </div>
 
-              <div className="row action-row compact-actions">
-                <button onClick={() => open(item.id)}>open text</button>
-                <button
-                  className="danger icon-button"
-                  aria-label="hide forever"
-                  title="hide forever"
-                  onClick={() => hideVideo(item)}
-                >
-                  ×
+              <div className="row">
+                <button onClick={() => open(item.id)} disabled={loading}>
+                  open text details
+                </button>
+
+                <button className="danger" onClick={() => hideForever(item)} disabled={loading}>
+                  hide forever
                 </button>
               </div>
             </div>

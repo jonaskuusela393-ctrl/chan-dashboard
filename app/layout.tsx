@@ -5,13 +5,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Black Terminal Viewport",
-  description: "Private terminal dashboard for 4chan, YouTube, and chat",
+  description: "Private terminal dashboard for 4chan, Reddit, YouTube, and chat",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#000000",
+  themeColor: "#020303",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -26,6 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {session ? (
               <>
                 <Link href="/chan">4chan</Link>
+                <Link href="/reddit">Reddit</Link>
                 <Link href="/youtube">YouTube</Link>
                 <Link href="/chat">Chat</Link>
                 <span className="userpill">{session.username}:{session.role}</span>

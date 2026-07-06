@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     const pageToken = String(req.nextUrl.searchParams.get("pageToken") || "").trim();
     if (!q) return jsonError("missing query", 400);
     const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
-    searchUrl.searchParams.set("part", "snippet"); searchUrl.searchParams.set("type", "video"); searchUrl.searchParams.set("maxResults", "12"); searchUrl.searchParams.set("q", q); searchUrl.searchParams.set("key", key); if (pageToken) searchUrl.searchParams.set("pageToken", pageToken);
+    searchUrl.searchParams.set("part", "snippet"); searchUrl.searchParams.set("type", "video"); searchUrl.searchParams.set("maxResults", "25"); searchUrl.searchParams.set("q", q); searchUrl.searchParams.set("key", key); if (pageToken) searchUrl.searchParams.set("pageToken", pageToken);
     const sres = await fetch(searchUrl, { cache: "no-store" }); const sdata = await sres.json().catch(() => ({})); if (!sres.ok) return jsonError(sdata.error?.message || `YouTube search returned ${sres.status}`, sres.status);
     const ids = (sdata.items || []).map((x: any) => x.id?.videoId).filter(Boolean).join(",");
     if (!ids) return NextResponse.json({ ok: true, items: [], nextPageToken: sdata.nextPageToken || "" });
