@@ -115,14 +115,14 @@ export default function EmailClient({ username }: { username: string }) {
     }
   }
 
-  async function sendResend() {
+  async function sendEmail(provider = "auto") {
     setLoading(true);
-    setStatus("sending through optional Resend API...");
+    setStatus(provider === "gmail" ? "sending through Gmail/SMTP..." : "sending through configured email provider...");
     try {
       const response = await fetch("/api/email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, subject, body }),
+        body: JSON.stringify({ to, subject, body, provider }),
       });
       const data = await readJson(response);
       if (!response.ok) throw new Error(String(data.error || "send failed"));
@@ -198,8 +198,11 @@ export default function EmailClient({ username }: { username: string }) {
             <a className="buttonlike" href={mailto}>open mail app</a>
             <button onClick={() => void markContacted()} disabled={!selected}>mark contacted</button>
           </div>
-          <button className="warn" onClick={() => void sendResend()} disabled={loading}>send via Resend API</button>
-          <p className="muted small">Sending needs RESEND_API_KEY and EMAIL_FROM. Without those, use copy or mailto mode.</p>
+          <div className="row">
+            <button className="warn" onClick={() => void sendEmail("gmail")} disabled={loading}>send via Gmail/SMTP</button>
+            <button onClick={() => void sendEmail("auto")} disabled={loading}>send via configured provider</button>
+          </div>
+          <p className="muted small">For Gmail direct sending, set GMAIL_USER and GMAIL_APP_PASSWORD. Without that, use copy draft or open mail app.</p>
         </section>
 
         <section className="panel stack">

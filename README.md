@@ -94,9 +94,22 @@ The radar still works in demo mode without the key. Live business search uses Go
 
 ### Email sending
 
-Copy/mailto mode works without email API keys.
+Copy/mailto mode works without email API keys. If your email is normal Gmail, the easiest no-setup workflow is: generate draft -> copy draft -> paste/send in Gmail.
 
-Optional direct sending uses Resend:
+Optional direct sending from Gmail uses SMTP and a Google App Password. Your normal Gmail password will not work. Turn on 2-Step Verification in your Google Account, then create an app password for this dashboard.
+
+```env
+EMAIL_PROVIDER=gmail
+GMAIL_USER=yourgmail@gmail.com
+GMAIL_APP_PASSWORD=your_16_character_google_app_password
+EMAIL_FROM=Your Name <yourgmail@gmail.com>
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+```
+
+Optional direct sending through Resend still works too:
 
 ```env
 RESEND_API_KEY=your_resend_api_key
