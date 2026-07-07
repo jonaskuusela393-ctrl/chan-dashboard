@@ -1,0 +1,456 @@
+That message means Reddit changed the API/app creation process. You are not doing anything wrong.
+
+Reddit now shows the Responsible Builder Policy before API/app creation, and new apps may need approval / developer registration. The policy says apps need to register/create a developer profile, clearly specify purpose/scope, and avoid prohibited activity like spam, manipulation, or bypassing safety systems.
+
+For your app, the safe description is simple:
+
+Private read-only Reddit browser for my own dashboard. It only reads public subreddit posts and comments. It does not post, comment, vote, message users, scrape private data, or automate engagement.
+
+Use this kind of info if Reddit asks for purpose:
+
+App name:
+private-terminal-dashboard
+
+Purpose:
+Personal private read-only dashboard for browsing public Reddit posts and comments in a simplified text interface.
+
+Use case:
+Read-only browsing of public subreddit listings and comment threads.
+
+Users:
+Only me and one friend.
+
+Permissions needed:
+Read public posts and comments only.
+
+No posting/commenting/voting:
+Yes, no posting, no commenting, no voting, no messaging.
+
+Data storage:
+Only stores my own local/dashboard hide preferences, such as hidden post IDs and disabled subreddits. Does not store Reddit passwords.
+
+If Reddit still will not let you create an app, we have two options:
+
+1. Wait / complete Reddit developer approval
+2. Remove Reddit API credentials and make the module use public JSON fallback
+
+The fallback can maybe browse public URLs like:
+
+https://www.reddit.com/r/anime/hot.json
+
+but it is less stable and can be blocked/rate-limited. API credentials are better if Reddit lets you create them.
+https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy
+Skip to main content
+Has anyone managed to access the Reddit API? : r/redditdev
+
+
+r/redditdev
+Search in ⁨r/redditdev⁩
+Advertise on Reddit
+
+Open chat
+Create
+Create post
+Open inbox
+
+User Avatar
+Expand user menu
+Skip to NavigationSkip to Right Sidebar
+
+Back
+
+Go to redditdev
+r/redditdev
+•
+5mo ago
+gleontev
+
+Has anyone managed to access the Reddit API?
+Reddit API
+I want to get the Reddit API for my commercial application, but I have no idea how to do it with the new rules. If I understand correctly, I need to select “commercial partner” in the application, not ‘developer’ as many people do, because it clearly states that “developer” is for non-commercial use only. How often do they accept applications for commercial use, and how long does it usually take to get a response? Please share your experience or information about this.
+
+
+Upvote
+31
+
+Downvote
+
+52
+Go to comments
+
+
+Share
+u/nanitor_official avatar
+nanitor_official
+•
+Promoted
+
+The MSP margin guide is still free. The partner program is still for qualified MSPs only. That's it. That's the ad.
+Download
+nanitor.com
+Thumbnail image: The MSP margin guide is still free. The partner program is still for qualified MSPs only. That's it. That's the ad.
+Join the conversation
+Sort by:
+
+Best
+
+Search Comments
+Expand comment search
+Comments Section
+u/Mediocre-Reward4581 avatar
+Mediocre-Reward4581
+•
+5mo ago
+Got no luck! Sending followup emails but no response < it's been a month with no response
+
+u/gleontev avatar
+gleontev
+OP
+•
+5mo ago
+This sucks, is there an alternative way to contact them?
+
+u/Mediocre-Reward4581 avatar
+Mediocre-Reward4581
+•
+5mo ago
+I got a straight away no. Seems a bot, and i don't think 3rd party apis are a good idea. Let me know if you found some way
+
+SatinWhispers_1
+•
+3mo ago
+Try Apify maybe
+
+Professional-Gur7050
+•
+3mo ago
+yeah but it's if i am right have it's own issues. AT least something
+
+Significant_Leg7689
+•
+2mo ago
+Same. I applied twice. They responded the first time, but later there was no response after I provided a detailed description of my non-commercial reason.
+Do they actually block all API applications?
+
+Curious, does anyone get the API key in after 2026?
+
+u/crazyshit_24 avatar
+crazyshit_24
+•
+2mo ago
+How many they take to respond for the first time?
+
+u/OkGoose5277 avatar
+OkGoose5277
+•
+2mo ago
+No, I have been trying to connect them, bot no response. looks like they are working on new pricing plan for api usage.
+
+LurkyRabbit
+•
+5mo ago
+I'm not even getting a reply on my request as a dev to just be allowed to use the most basic feature that won't require excess API usage.
+
+u/Beginning_Poetry3814 avatar
+Beginning_Poetry3814
+•
+5mo ago
+Same here only 2 small subreddits even
+
+u/Imaginary-Koala-459 avatar
+Imaginary-Koala-459
+•
+4mo ago
+did u get now?
+
+LurkyRabbit
+•
+4mo ago
+I got declined after like a month or so and when I replied asking for more info I never heard back after a bunch of weeks.
+
+u/MustaKotka avatar
+MustaKotka
+•
+5mo ago
+•
+Edited 5mo ago
+What kind of a use-case do you have?
+
+EDIT: OP seems to have deleted their reply. Well, here is what I had to say:
+
+Alright, so ~mild scraping, right? Might be one of those things Reddit won't want you to do.
+
+u/Rohde-Schwarz avatar
+u/Rohde-Schwarz
+•
+Promoted
+
+The CMX500 – the all-in-one solution as committed to your wireless communication testing ambitions as you are. The one that delivers reliable and realistic emulation for all wireless standards such as 4G, 5G, Wi-Fi and even 6G - when it arrives. This is the one.
+Learn More
+rohde-schwarz.com
+Clickable image which will reveal the video player: The CMX500 – the all-in-one solution as committed to your wireless communication testing ambitions as you are. The one that delivers reliable and realistic emulation for all wireless standards such as 4G, 5G, Wi-Fi and even 6G - when it arrives. This is the one.
+Collapse video player
+
+0:00 / 0:00
+
+
+
+
+TW1TCHYGAM3R
+•
+5mo ago
+I'm sure Reddit doesn't want you to have access. I tried last night but it kept bringing me to a blank page.
+
+Select-Spirit-6726
+•
+5mo ago
+You don’t need to have this I wrote an API that does it and you don’t have to have the official just do some searching especially with Claude. Ask how you can do it. It pretty much tells you how and will write it for you.
+
+gkdaman92
+•
+4mo ago
+mind giving the prompt you use/wrote?
+
+Select-Spirit-6726
+•
+4mo ago
+I didn't use a specific prompt. I just told it what I needed — pull posts, search by keyword, grab comments — and it wrote the code. You don't need the official API for most stuff. Reddit has public .json endpoints, just slap .json on the end of any Reddit URL and you get the data back. No keys, no application, no waiting around for approval.
+
+gkdaman92
+•
+4mo ago
+Thanks for the info!
+
+Professional-Gur7050
+•
+3mo ago
+Omg if this true you will save my little project liturly
+
+ravenz0r1822
+•
+3mo ago
+Just FYI - Reddit is blocking unauthenticated requests with 403 errors. They've tightened API access even for public .json endpoints. :(
+
+Anyone have other suggestions?
+
+u/Tinklemetoe avatar
+Tinklemetoe
+•
+1mo ago
+Will look into it. Try the library for screenshotting it then OCR to get the data, its very simple and works from when i did security research
+
+u/Maleficent_Earth2210 avatar
+Maleficent_Earth2210
+•
+5mo ago
+I’m running into the same situation.
+
+I applied twice for commercial API access with a detailed submission explaining the architecture, rate limits, and compliance with the Responsible Builder Policy.
+
+Still received generic rejection responses saying the request lacked details or was not compliant, but without specific feedback on what is missing.
+
+Professional-Gur7050
+•
+3mo ago
+well i asked the same for non commercial they declined them twice too but than after third timing reconstructing ethir the actaul dates or detailes on the project it's stilss going for couple of days.
+
+u/TalarionTech avatar
+u/TalarionTech
+•
+Promoted
+
+Tired of your agent missing what matters?
+Learn More
+talarion.com
+Thumbnail image: Tired of your agent missing what matters?
+inboundmage
+•
+5mo ago
+Sadly not :( I emailed them months ago, couple of times - no answer.
+
+u/gleontev avatar
+gleontev
+OP
+•
+5mo ago
+Did you apply for commercial use?
+
+jwoody86
+•
+5mo ago
+I keep getting my same generic rejection email.
+
+Tzipi_builds
+•
+5mo ago
+Confirming the 'blank page' issue is still very much active. I’ve tried multiple browsers and network setups, but the redirect fails every single time I try to create a basic 'script' app.
+
+It feels like Reddit has significantly tightened the gates - possibly a mix of UI bugs and an intentional soft-block to curb the influx of AI bots and scrapers. It’s particularly frustrating for those of us trying to build legitimate, low-volume 'Agent-First' tools and wanting to go through the official developer route.
+
+Has anyone found a specific workaround, or are we all just being pushed toward 3rd party scraping APIs at this point?
+
+andrei__t
+•
+5mo ago
+I tried as well, sent a message about what I want to do with the web app API and replied back that I am not approved because 'the submission is not in compliance with Reddit’s Responsible Builder Policy and/or lacks necessary details.'
+
+So seems to be a manual approval now.
+
+I submitted my request on this link:
+
+https://support.reddithelp.com/hc/en-us/requests/new?ticket_form_id=14868593862164&tf_14867328473236=api_request_type_research
+
+u/kazuki20697 avatar
+kazuki20697
+•
+5mo ago
+I think they shadow killed their API for new people.
+
+u/Downtown_Bed_8726 avatar
+Downtown_Bed_8726
+•
+5mo ago
+what are the alternative option ?
+my use case is doing some market trends research for my personal project to put new features into it i don't know under what Category i fall under ? developer or research ? or what what is the best way to Tackle this.
+
+PulsePilot-AI
+•
+4mo ago
+I made a free reddit scraper (no api key needed):
+
+https://apify.com/spry_wholemeal/reddit-scraper
+
+Professional-Gur7050
+•
+3mo ago
+sound like scam
+
+u/Internal-Cup-341 avatar
+Internal-Cup-341
+•
+4mo ago
+Same it's frustrating as hell!
+
+Input-X
+•
+4mo ago
+Seriously what is up with this, tried, google, firefix, incognito, iphone android, safari, google and firefox, Still cant get past the application, keps says read the Developer notes. Why is this so hard, tryed for a month now
+
+[deleted]
+•
+5mo ago
+•
+Edited 21d ago
+Comment removed by moderator
+
+move2usajobs-com
+•
+24d ago
+lol they are selling minimax3 as opus 3 times more expensive
+
+[deleted]
+•
+4mo ago
+Comment removed by moderator
+
+Apprehensive-Fly-954
+•
+4mo ago
+Yeah, likewise they just rejected me without any clear reason.
+
+Has anyone been able to use the DM APIs? I want to monitor my DMs but they just wont provide access
+
+Community Info Section
+r/redditdev
+Join
+reddit Development
+A subreddit for discussion of Reddit's API and Reddit API clients.
+Created Jun 18, 2008
+Public
+16K
+Weekly visitors
+94
+Weekly contributions
+User flair
+u/Snoo-6550 avatar
+Snoo-6550
+Community Bookmarks
+API Documentation
+API Rules
+
+Client Libraries
+Info
+To report a security issue with reddit, please send an email to whitehats@reddit.com .
+
+r/redditdev Rules
+1
+Relevance
+Posts must directly relate to Reddit's API, API libraries, or Reddit's source code. Ideas for changes belong in r/ideasfortheadmins; bug reports should be posted to r/bugs; general Reddit questions should be made in r/help; and requests for bots should be made to r/requestabot.
+
+2
+Unproductive response
+Comments should be productive and helpful, not condescending. If you can't help answer someone's question or direct them to an appropriate subreddit, you should not comment at all.
+
+3
+Language specific
+Posts should not ask questions that could otherwise be answered in a language-specific subreddit. For example, questions like, "how do I install PRAW?" are better asked in r/learnpython, as the question can be generalized to, "how do I install a package?".
+
+4
+Not a testing ground
+r/redditdev is not the right place to test your bots & scripts. Please create your own private subreddit, or use r/test.
+
+5
+Asking for help
+While we understand that many people are new to programming, when asking for help online (in any forum!) you must always always include your code, explain how it works, what the problem is, what you tried, and why it didn't work. This is similar to how you wouldn't walk into a mechanic and expect "hey my car isn't working, what gives?" to be enough to diagnose your problem. The more detail, the more likely you'll get your question answered. Low-effort questions will be removed.
+
+See Also
+
+r/announcements
+302,602,048 members
+
+r/bugs
+116,126 members
+
+r/changelog
+68,542 members
+
+r/help
+1,330,296 members
+
+r/ideasfortheadmins
+40,139 members
+
+r/learnpython
+1,039,570 members
+r/RequestABot
+6,306 members
+Moderators
+Message Mods
+u/spez avatar
+u/spez
+u/KeyserSosa
+u/pl00h
+u/JabroniRevanchism
+SmallWizord
+u/lift_ticket83
+u/thephilthe avatar
+u/thephilthe
+u/jedberg
+u/chromakode avatar
+u/chromakode
+u/taylorkline avatar
+u/taylorkline
+ 
+Bot Developer
+u/FlyingLaserTurtle
+Dr. Flying Laser Turtle
+View all moderators
+Reddit Rules
+Privacy Policy
+User Agreement
+Accessibility
+Reddit, Inc. © 2026. All rights reserved.
+
+Collapse Navigation
+
+

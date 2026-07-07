@@ -1,0 +1,13 @@
+
+> private-terminal-dashboard@1.0.0 build /mnt/data/work_chan/chan-dashboard
+> node scripts/build.mjs
+
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+▲ Next.js 16.2.10 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 13.3s
+  Running TypeScript ...
+  Finished TypeScript in 6.4s ...
+  Collecting page data using 31 workers ...
+ ELIFECYCLE  Command failed.

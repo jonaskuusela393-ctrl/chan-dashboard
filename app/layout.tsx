@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
+import { canAccess, getSession } from "@/lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Black Terminal Viewport",
-  description: "Private terminal dashboard for 4chan, Reddit, YouTube, and chat",
+  description: "Private terminal dashboard for chat, browsing, local leads, email, and mobile coding",
 };
 
 export const viewport: Viewport = {
@@ -21,13 +21,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" suppressHydrationWarning>
       <body>
         <header className="topbar">
-          <Link className="brand" href="/">black viewport</Link>
+          <Link className="brand" href={session?.role === "user" ? "/chat" : "/"}>black viewport</Link>
           <nav className="nav" aria-label="Main navigation">
             {session ? (
               <>
-                <Link href="/chan">4chan</Link>
-                <Link href="/reddit">Reddit</Link>
-                <Link href="/youtube">YouTube</Link>
+                {canAccess(session, "chan") && <Link href="/chan">4chan</Link>}
+                {canAccess(session, "reddit") && <Link href="/reddit">Reddit</Link>}
+                {canAccess(session, "youtube") && <Link href="/youtube">YouTube</Link>}
+                {canAccess(session, "business") && <Link href="/business">Radar</Link>}
+                {canAccess(session, "email") && <Link href="/email">Email</Link>}
+                {canAccess(session, "dev") && <Link href="/dev">Dev</Link>}
                 <Link href="/chat">Chat</Link>
                 <span className="userpill">{session.username}:{session.role}</span>
                 <a href="/api/auth/logout">logout</a>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
+import { authStatus, requireAdmin } from "@/lib/auth";
 import { isBoardBlocked } from "@/lib/db";
 import { cleanBoard, validBoard } from "@/lib/chan";
 
@@ -11,7 +11,7 @@ function jsonError(error: string, status = 500) { return NextResponse.json({ ok:
 
 export async function GET(req: NextRequest) {
   try {
-    const session = requireSession(req);
+    const session = requireAdmin(req);
     const board = cleanBoard(req.nextUrl.searchParams.get("board") || "");
     const tim = String(req.nextUrl.searchParams.get("tim") || "").trim();
     const ext = String(req.nextUrl.searchParams.get("ext") || "").trim().toLowerCase();
@@ -24,6 +24,6 @@ export async function GET(req: NextRequest) {
     if (!upstream.ok || !upstream.body) return NextResponse.redirect(upstreamUrl, 302);
     return new NextResponse(upstream.body, { status: 200, headers: { "Content-Type": upstream.headers.get("content-type") || TYPES[ext], "Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff" } });
   } catch (error: any) {
-    return jsonError(error?.message || "Image failed", error?.message === "Not logged in" ? 401 : 500);
+    return jsonError(error?.message || "Image failed", authStatus(error));
   }
 }

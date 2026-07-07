@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
+import { authStatus, requireAdmin } from "@/lib/auth";
 import { listBoardBlocks, setBoardBlock } from "@/lib/db";
 import { cleanBoard, validBoard } from "@/lib/chan";
 
@@ -10,17 +10,17 @@ function jsonError(error: string, status = 500) { return NextResponse.json({ ok:
 
 export async function GET(req: NextRequest) {
   try {
-    const session = requireSession(req);
+    const session = requireAdmin(req);
     const blocks = await listBoardBlocks(session.username);
     return NextResponse.json({ ok: true, blocks });
   } catch (error: any) {
-    return jsonError(error?.message || "Could not load board blocks", error?.message === "Not logged in" ? 401 : 500);
+    return jsonError(error?.message || "Could not load board blocks", authStatus(error));
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = requireSession(req);
+    const session = requireAdmin(req);
     const body = await req.json().catch(() => ({}));
     const board = cleanBoard(String(body.board || ""));
     const mode = String(body.mode || "");
@@ -31,6 +31,6 @@ export async function POST(req: NextRequest) {
     const blocks = await listBoardBlocks(session.username);
     return NextResponse.json({ ok: true, board, blocks });
   } catch (error: any) {
-    return jsonError(error?.message || "Could not disable board", error?.message === "Not logged in" ? 401 : 500);
+    return jsonError(error?.message || "Could not disable board", authStatus(error));
   }
 }

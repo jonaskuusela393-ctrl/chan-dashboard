@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
+import { authStatus, requireAdmin } from "@/lib/auth";
 import { isTargetDisabled } from "@/lib/db";
 import { cleanSort, cleanSubreddit, cleanTime, normalizePost, redditFetch } from "@/lib/reddit";
 
@@ -12,7 +12,7 @@ function jsonError(error: string, status = 500) {
 
 export async function GET(req: NextRequest) {
   try {
-    const session = requireSession(req);
+    const session = requireAdmin(req);
     const subreddit = cleanSubreddit(req.nextUrl.searchParams.get("subreddit") || "all");
     const sort = cleanSort(req.nextUrl.searchParams.get("sort") || "hot");
     const time = cleanTime(req.nextUrl.searchParams.get("time") || "day");
@@ -41,6 +41,6 @@ export async function GET(req: NextRequest) {
       before: data?.data?.before || "",
     });
   } catch (error: any) {
-    return jsonError(error?.message || "Reddit list failed", error?.message === "Not logged in" ? 401 : 500);
+    return jsonError(error?.message || "Reddit list failed", authStatus(error));
   }
 }

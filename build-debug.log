@@ -1,16 +1,19 @@
-⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+
+> private-terminal-dashboard@1.0.0 build /mnt/data/work_chan/chan-dashboard
+> node scripts/build.mjs
+
 ▲ Next.js 16.2.10 (Turbopack)
 
   Creating an optimized production build ...
-✓ Compiled successfully in 13.0s
+✓ Compiled successfully in 13.2s
   Running TypeScript ...
-  Finished TypeScript in 6.8s ...
-  Collecting page data using 34 workers ...
-  Generating static pages using 34 workers (0/11) ...
-  Generating static pages using 34 workers (2/11) 
-  Generating static pages using 34 workers (5/11) 
-  Generating static pages using 34 workers (8/11) 
-✓ Generating static pages using 34 workers (11/11) in 1236ms
+  Finished TypeScript in 7.1s ...
+  Collecting page data using 31 workers ...
+  Generating static pages using 31 workers (0/11) ...
+  Generating static pages using 31 workers (2/11) 
+  Generating static pages using 31 workers (5/11) 
+  Generating static pages using 31 workers (8/11) 
+✓ Generating static pages using 31 workers (11/11) in 1460ms
   Finalizing page optimization ...
 
 Route (app)
@@ -29,9 +32,6 @@ Route (app)
 ├ ƒ /api/chat/messages
 ├ ƒ /api/chat/state
 ├ ƒ /api/deleted
-├ ƒ /api/dev/export
-├ ƒ /api/dev/files
-├ ƒ /api/dev/terminal
 ├ ƒ /api/email/send
 ├ ƒ /api/reddit/blocks
 ├ ƒ /api/reddit/comments

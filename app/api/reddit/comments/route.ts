@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
+import { authStatus, requireAdmin } from "@/lib/auth";
 import { cleanPostId, cleanSubreddit, flattenComments, normalizePost, redditFetch } from "@/lib/reddit";
 
 export const runtime = "nodejs";
@@ -11,7 +11,7 @@ function jsonError(error: string, status = 500) {
 
 export async function GET(req: NextRequest) {
   try {
-    requireSession(req);
+    requireAdmin(req);
     const subreddit = cleanSubreddit(req.nextUrl.searchParams.get("subreddit") || "");
     const id = cleanPostId(req.nextUrl.searchParams.get("id") || "");
 
@@ -27,6 +27,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true, post, comments, count: comments.length });
   } catch (error: any) {
-    return jsonError(error?.message || "Reddit comments failed", error?.message === "Not logged in" ? 401 : 500);
+    return jsonError(error?.message || "Reddit comments failed", authStatus(error));
   }
 }

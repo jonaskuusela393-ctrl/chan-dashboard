@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
+import { authStatus, requireAdmin } from "@/lib/auth";
 import { isBoardBlocked } from "@/lib/db";
 import { cleanBoard, cleanExt, validBoard } from "@/lib/chan";
 import { cleanHtml } from "@/lib/sanitize";
@@ -13,7 +13,7 @@ function jsonError(error: string, status = 500) { return NextResponse.json({ ok:
 
 export async function GET(req: NextRequest) {
   try {
-    const session = requireSession(req);
+    const session = requireAdmin(req);
     const board = cleanBoard(req.nextUrl.searchParams.get("board") || "g");
     if (!validBoard(board)) return jsonError("Bad board", 400);
     if (await isBoardBlocked(session.username, board)) return jsonError(`/${board}/ is disabled for your account.`, 403);
@@ -36,6 +36,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, board, threads, count: threads.length });
     } finally { clearTimeout(timeout); }
   } catch (error: any) {
-    return jsonError(error?.name === "AbortError" ? "4chan timed out" : error?.message || "Catalog failed", error?.message === "Not logged in" ? 401 : 500);
+    return jsonError(error?.name === "AbortError" ? "4chan timed out" : error?.message || "Catalog failed", authStatus(error));
   }
 }

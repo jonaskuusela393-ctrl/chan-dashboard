@@ -1,90 +1,138 @@
-# Private Terminal Dashboard
+# Black Terminal Viewport Dashboard
 
-Black/gray mobile-first terminal dashboard with:
+Private Next.js dashboard with:
 
-- full-site login for two accounts
-- 4chan read-only viewport
-- 4chan board list built in
-- per-user hidden 4chan threads/posts
-- per-user disabled 4chan boards: 1 day, 7 days, 30 days, permanent
-- Reddit read-only viewport
-- per-user hidden Reddit posts/comments
-- per-user disabled subreddits: 1 day, 7 days, 30 days, permanent
-- YouTube text browser with durations
-- per-user hidden YouTube videos
-- private two-person chat with online/offline lamps
-- disappearing chat via CHAT_TTL_HOURS
+- Admin-only 4chan viewport
+- Admin-only Reddit viewport
+- Admin-only YouTube text browser
+- Private two-user chat
+- Admin-only Local Client Radar / business finder
+- Admin-only Email Outreach Console
+- Admin-only Mobile Dev Workspace
 
-## Local install
+User 2 / friend account is locked down to chat only. Admin modules are hidden in the UI and blocked in API routes.
 
-```powershell
-cd C:\Users\tiina\Downloads\chan-dashboard
+## Install
+
+```bash
 npx --yes pnpm@10.13.1 install
-npx --yes pnpm@10.13.1 build
+```
+
+## Development server
+
+Same PC only:
+
+```bash
 npx --yes pnpm@10.13.1 dev
 ```
 
-Open:
+Phone on same Wi-Fi:
 
-```text
-http://localhost:3000
+```bash
+npx --yes next dev -p 3000 -H 0.0.0.0
 ```
 
-## Vercel variables
+Then open:
 
-Required:
+```txt
+http://YOUR-PC-LOCAL-IP:3000
+```
 
-```text
-DATABASE_URL=your Neon pooled connection string
-AUTH_SECRET=long random secret at least 32 chars
-ADMIN_USERNAME=jonas
-ADMIN_PASSWORD=your admin password
-FRIEND_USERNAME=friend
-FRIEND_PASSWORD=friend password
-YOUTUBE_API_KEY=your YouTube Data API key
-REDDIT_CLIENT_ID=your Reddit app client ID
-REDDIT_CLIENT_SECRET=your Reddit app client secret
-REDDIT_USER_AGENT=private-terminal-dashboard:v1.0 by jonas
+## Build with log
+
+PowerShell / CMD style:
+
+```cmd
+npx --yes pnpm@10.13.1 build > build-log.txt 2>&1 && notepad build-log.txt
+```
+
+If the command fails and Notepad does not open:
+
+```cmd
+npx --yes pnpm@10.13.1 build > build-log.txt 2>&1 & notepad build-log.txt
+```
+
+## Required env vars
+
+Create `.env.local`:
+
+```env
+AUTH_SECRET=make_this_at_least_32_characters_long_123456
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change_this_admin_password
+USER_USERNAME=chat
+USER_PASSWORD=change_this_user_password
 SESSION_DAYS=30
+
+DATABASE_URL=your_neon_database_url
 CHAT_MAX_UPLOAD_MB=4
-CHAT_TTL_HOURS=24
+CHAT_TTL_HOURS=0
 ```
 
-Useful Vercel install stability variables:
+Old friend env names still work too:
 
-```text
-VERCEL_FORCE_NO_BUILD_CACHE=1
-NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
-PNPM_CONFIG_REGISTRY=https://registry.npmjs.org/
-PNPM_CONFIG_FETCH_TIMEOUT=300000
-PNPM_CONFIG_NETWORK_TIMEOUT=300000
-PNPM_CONFIG_FETCH_RETRIES=8
+```env
+FRIEND_USERNAME=chat
+FRIEND_PASSWORD=change_this_user_password
 ```
 
-Generate AUTH_SECRET:
+## Optional APIs
 
-```powershell
-node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+### YouTube
+
+```env
+YOUTUBE_API_KEY=your_youtube_api_key
 ```
 
-## Neon SQL
+### Google Places / Client Radar
 
-Run `NEON_SCHEMA.sql` in Neon SQL Editor.
-
-## Reddit app credentials
-
-Create a Reddit app at:
-
-```text
-https://www.reddit.com/prefs/apps
+```env
+GOOGLE_MAPS_API_KEY=your_google_maps_or_places_key
 ```
 
-Use read-only app credentials in Vercel:
+The radar still works in demo mode without the key. Live business search uses Google Places API. Do not scrape Google Maps.
 
-```text
-REDDIT_CLIENT_ID
-REDDIT_CLIENT_SECRET
-REDDIT_USER_AGENT
+### Email sending
+
+Copy/mailto mode works without email API keys.
+
+Optional direct sending uses Resend:
+
+```env
+RESEND_API_KEY=your_resend_api_key
+EMAIL_FROM=Your Name <you@yourdomain.com>
 ```
 
-No Reddit username/password is needed because this dashboard does not post, comment, vote, or access private Reddit data.
+### Dev Workspace
+
+By default the Dev Workspace edits the project folder where this dashboard is running.
+
+Optional:
+
+```env
+DEV_WORKSPACE_ROOT=C:\Users\tiina\Downloads\chan-dashboard
+```
+
+Preset terminal buttons are enabled. Custom shell commands are blocked unless you explicitly enable them:
+
+```env
+DEV_ALLOW_ARBITRARY_COMMANDS=true
+```
+
+Only use that on your own private PC. The dev terminal is admin-only, but it is still powerful.
+
+## Role lock-down
+
+Admin sees everything:
+
+```txt
+chat, 4chan, reddit, youtube, client radar, email, dev workspace
+```
+
+User 2 sees only:
+
+```txt
+chat
+```
+
+The hiding is server-side too. Non-admin requests to admin APIs return forbidden.

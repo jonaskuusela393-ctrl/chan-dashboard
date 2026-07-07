@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireSession } from "@/lib/auth";
+import { authStatus, requireAdmin } from "@/lib/auth";
 import { listDisabledTargets, setDisabledTarget } from "@/lib/db";
 import { cleanSubreddit } from "@/lib/reddit";
 
@@ -12,17 +12,17 @@ function jsonError(error: string, status = 500) {
 
 export async function GET(req: NextRequest) {
   try {
-    const session = requireSession(req);
+    const session = requireAdmin(req);
     const blocks = await listDisabledTargets(session.username, "reddit");
     return NextResponse.json({ ok: true, blocks });
   } catch (error: any) {
-    return jsonError(error?.message || "Could not load subreddit disables", error?.message === "Not logged in" ? 401 : 500);
+    return jsonError(error?.message || "Could not load subreddit disables", authStatus(error));
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = requireSession(req);
+    const session = requireAdmin(req);
     const body = await req.json().catch(() => ({}));
     const subreddit = cleanSubreddit(String(body.subreddit || "")).toLowerCase();
     const mode = String(body.mode || "");
@@ -35,6 +35,6 @@ export async function POST(req: NextRequest) {
     const blocks = await listDisabledTargets(session.username, "reddit");
     return NextResponse.json({ ok: true, subreddit, blocks });
   } catch (error: any) {
-    return jsonError(error?.message || "Could not disable subreddit", error?.message === "Not logged in" ? 401 : 500);
+    return jsonError(error?.message || "Could not disable subreddit", authStatus(error));
   }
 }

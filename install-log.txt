@@ -1,0 +1,40 @@
+Recreating /mnt/data/work_chan/chan-dashboard/node_modules
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +45
++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 45, reused 0, downloaded 0, added 0
+Progress: resolved 45, reused 0, downloaded 1, added 0
+Progress: resolved 45, reused 0, downloaded 30, added 11
+Progress: resolved 45, reused 0, downloaded 38, added 38
+Progress: resolved 45, reused 0, downloaded 41, added 41
+Progress: resolved 45, reused 0, downloaded 42, added 42
+Progress: resolved 45, reused 0, downloaded 43, added 42
+Progress: resolved 45, reused 0, downloaded 44, added 44
+Progress: resolved 45, reused 0, downloaded 45, added 44
+Progress: resolved 45, reused 0, downloaded 45, added 45
+Progress: resolved 45, reused 0, downloaded 45, added 45, done
+
+dependencies:
++ @neondatabase/serverless 1.1.0
++ @types/sanitize-html 2.16.0
++ next 16.2.10
++ react 19.2.0
++ react-dom 19.2.0
++ sanitize-html 2.17.0
+
+devDependencies:
++ @types/node 22.15.32
++ @types/react 19.2.0
++ @types/react-dom 19.2.0
++ typescript 5.9.2
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: sharp.                                              │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Done in 19.3s using pnpm v10.13.1

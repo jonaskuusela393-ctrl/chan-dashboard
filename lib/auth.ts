@@ -3,13 +3,32 @@ import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 
+export type Role = "admin" | "user";
+export type ModuleKey = "chat" | "chan" | "reddit" | "youtube" | "business" | "email" | "dev" | "settings";
+
 export type Session = {
   username: string;
-  role: "admin" | "user";
+  role: Role;
   exp: number;
 };
 
 export const SESSION_COOKIE = "black_terminal_session";
+
+export const MODULE_LABELS: Record<ModuleKey, string> = {
+  chat: "Chat",
+  chan: "4chan",
+  reddit: "Reddit",
+  youtube: "YouTube",
+  business: "Client radar",
+  email: "Email",
+  dev: "Dev workspace",
+  settings: "Settings",
+};
+
+export const ROLE_MODULES: Record<Role, ModuleKey[]> = {
+  admin: ["chat", "chan", "reddit", "youtube", "business", "email", "dev", "settings"],
+  user: ["chat"],
+};
 
 function secret() {
   const value = process.env.AUTH_SECRET || "";
@@ -33,7 +52,7 @@ function safeEqual(a: string, b: string) {
   return crypto.timingSafeEqual(left, right);
 }
 
-export function createSessionValue(username: string, role: "admin" | "user") {
+export function createSessionValue(username: string, role: Role) {
   const days = Math.max(1, Math.min(Number(process.env.SESSION_DAYS || 30), 365));
   const payload = b64url(JSON.stringify({ username, role, exp: Date.now() + days * 86400000 }));
   return `${payload}.${sign(payload)}`;
@@ -62,16 +81,44 @@ export function getSessionFromRequest(req: NextRequest) {
   return verifySessionValue(req.cookies.get(SESSION_COOKIE)?.value || "");
 }
 
+export function canAccess(session: Session | null, module: ModuleKey) {
+  if (!session) return false;
+  return ROLE_MODULES[session.role].includes(module);
+}
+
+export function isAdmin(session: Session | null) {
+  return session?.role === "admin";
+}
+
 export function requireSession(req: NextRequest) {
   const session = getSessionFromRequest(req);
   if (!session) throw new Error("Not logged in");
   return session;
 }
 
-export function verifyLogin(usernameInput: string, passwordInput: string): { username: string; role: "admin" | "user" } | null {
+export function requireAdmin(req: NextRequest) {
+  const session = requireSession(req);
+  if (session.role !== "admin") throw new Error("Admin only");
+  return session;
+}
+
+export function requireModule(req: NextRequest, module: ModuleKey) {
+  const session = requireSession(req);
+  if (!canAccess(session, module)) throw new Error("Forbidden");
+  return session;
+}
+
+export function authStatus(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  if (message === "Not logged in") return 401;
+  if (message === "Admin only" || message === "Forbidden") return 403;
+  return 500;
+}
+
+export function verifyLogin(usernameInput: string, passwordInput: string): { username: string; role: Role } | null {
   const users = [
     { username: process.env.ADMIN_USERNAME || "", password: process.env.ADMIN_PASSWORD || "", role: "admin" as const },
-    { username: process.env.FRIEND_USERNAME || "", password: process.env.FRIEND_PASSWORD || "", role: "user" as const },
+    { username: process.env.FRIEND_USERNAME || process.env.USER_USERNAME || "", password: process.env.FRIEND_PASSWORD || process.env.USER_PASSWORD || "", role: "user" as const },
   ];
 
   const username = usernameInput.trim();
