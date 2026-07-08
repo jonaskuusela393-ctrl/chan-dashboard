@@ -97,3 +97,12 @@ npx --yes pnpm@10.13.1 build > build-log.txt 2>&1 & notepad build-log.txt
 - Improved search result rows and lead panels to show whether a business has no site, a weak site, contact form, email, phone, or unchecked site.
 - Fixed unsaved search leads so manual edits/status changes save cleanly instead of failing with “lead not found.”
 - Did a CSS/UI pass for better wrapping, mobile controls, scroll containment, and long URL/text handling across pages.
+
+## 2026 crash fix + build stability
+
+- Fixed business page crash: `Cannot read properties of null (reading 'website')`.
+- Made business lead arrays defensive against invalid/null API rows.
+- Made audit helper safe when no lead is selected.
+- Added app favicon so `/favicon.ico` stops returning 404.
+- Limited Next build worker count to 1 in `next.config.ts` so builds do not hang/crash on low-resource Windows/Vercel environments.
+- Verified `npx --yes pnpm@10.13.1 build` passes.

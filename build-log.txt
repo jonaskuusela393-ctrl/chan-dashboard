@@ -1,20 +1,21 @@
 
-> private-terminal-dashboard@1.0.0 build /mnt/data/chan_email_work/chan-dashboard
+> private-terminal-dashboard@1.0.0 build /mnt/data/fix_work/chan-dashboard
 > node scripts/build.mjs
 
-⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
 ▲ Next.js 16.2.10 (Turbopack)
+- Experiments (use with caution):
+  · cpus: 1
 
   Creating an optimized production build ...
-✓ Compiled successfully in 10.2s
+✓ Compiled successfully in 9.9s
   Running TypeScript ...
-  Finished TypeScript in 5.5s ...
-  Collecting page data using 35 workers ...
-  Generating static pages using 35 workers (0/11) ...
-  Generating static pages using 35 workers (2/11) 
-  Generating static pages using 35 workers (5/11) 
-  Generating static pages using 35 workers (8/11) 
-✓ Generating static pages using 35 workers (11/11) in 957ms
+  Finished TypeScript in 5.8s ...
+  Collecting page data using 1 worker ...
+  Generating static pages using 1 worker (0/12) ...
+  Generating static pages using 1 worker (3/12) 
+  Generating static pages using 1 worker (6/12) 
+  Generating static pages using 1 worker (9/12) 
+✓ Generating static pages using 1 worker (12/12) in 331ms
   Finalizing page optimization ...
 
 Route (app)
