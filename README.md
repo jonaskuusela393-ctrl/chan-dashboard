@@ -1,16 +1,35 @@
 # Black Terminal Viewport Dashboard
 
-Private Next.js dashboard with:
+Private Next.js dashboard with a black terminal UI.
 
-- Admin-only 4chan viewport
-- Admin-only Reddit viewport
-- Admin-only YouTube text browser
-- Private two-user chat
-- Admin-only Local Client Radar / business finder
-- Admin-only Email Outreach Console
-- Admin-only Mobile Dev Workspace
+## What is included
 
-User 2 / friend account is locked down to chat only. Admin modules are hidden in the UI and blocked in API routes.
+Admin account sees everything:
+
+- 4chan viewport
+- Reddit viewport
+- YouTube text browser
+- Private chat
+- Local Business Money Dashboard
+  - Lead finder / local radar
+  - Business audit checklist
+  - Offer builder
+  - English + Finnish pitch generator
+  - Demo landing-page HTML generator
+  - Mini CRM
+  - Follow-up tracker
+  - Niche template library
+  - Website/Google/review text generator
+  - Money/pipeline tracker
+- Email Outreach Console
+- Mobile Dev Workspace
+
+User 2 / friend account sees only:
+
+- Chat
+- Logout
+
+The lock-down is not only visual. Admin pages redirect User 2 back to `/chat`, and admin API routes use `requireAdmin`, so User 2 cannot call business, 4chan, Reddit, YouTube, email, dev, deleted-item, or board-block APIs.
 
 ## Install
 
@@ -40,7 +59,7 @@ http://YOUR-PC-LOCAL-IP:3000
 
 ## Build with log
 
-PowerShell / CMD style:
+PowerShell / CMD:
 
 ```cmd
 npx --yes pnpm@10.13.1 build > build-log.txt 2>&1 && notepad build-log.txt
@@ -54,7 +73,7 @@ npx --yes pnpm@10.13.1 build > build-log.txt 2>&1 & notepad build-log.txt
 
 ## Required env vars
 
-Create `.env.local`:
+Create `.env.local` locally, or add the same variables in Vercel.
 
 ```env
 AUTH_SECRET=make_this_at_least_32_characters_long_123456
@@ -69,56 +88,72 @@ CHAT_MAX_UPLOAD_MB=4
 CHAT_TTL_HOURS=0
 ```
 
-Old friend env names still work too:
+Old User 2 env names still work too:
 
 ```env
 FRIEND_USERNAME=chat
 FRIEND_PASSWORD=change_this_user_password
 ```
 
-## Optional APIs
+## Optional APIs / env vars
 
-### YouTube
+### YouTube module
+
+Needed for live YouTube search:
 
 ```env
 YOUTUBE_API_KEY=your_youtube_api_key
 ```
 
-### Google Places / Client Radar
+### Google Places / Lead Finder
+
+Needed for live local business search:
 
 ```env
 GOOGLE_MAPS_API_KEY=your_google_maps_or_places_key
 ```
 
-The radar still works in demo mode without the key. Live business search uses Google Places API. Do not scrape Google Maps.
+Alternative accepted name:
+
+```env
+GOOGLE_PLACES_API_KEY=your_google_places_key
+```
+
+The dashboard still works in demo mode without this key. Do not scrape Google Maps. The live lead finder uses the official Google Places API.
 
 ### Email sending
 
-Copy/mailto mode works without email API keys. If your email is normal Gmail, the easiest no-setup workflow is: generate draft -> copy draft -> paste/send in Gmail.
+No API is required for copy/mailto mode. The easiest workflow is:
 
-Optional direct sending from Gmail uses SMTP and a Google App Password. Your normal Gmail password will not work. Turn on 2-Step Verification in your Google Account, then create an app password for this dashboard.
+1. Generate draft.
+2. Copy draft.
+3. Paste/send in Gmail manually.
+
+Optional direct sending through Gmail SMTP:
 
 ```env
 EMAIL_PROVIDER=gmail
 GMAIL_USER=yourgmail@gmail.com
 GMAIL_APP_PASSWORD=your_16_character_google_app_password
 EMAIL_FROM=Your Name <yourgmail@gmail.com>
-
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_SECURE=true
 ```
 
-Optional direct sending through Resend still works too:
+Your normal Gmail password will not work. Use a Google App Password.
+
+Optional direct sending through Resend:
 
 ```env
+EMAIL_PROVIDER=resend
 RESEND_API_KEY=your_resend_api_key
 EMAIL_FROM=Your Name <you@yourdomain.com>
 ```
 
 ### Dev Workspace
 
-By default the Dev Workspace edits the project folder where this dashboard is running.
+By default the Dev Workspace edits the folder where this dashboard is running.
 
 Optional:
 
@@ -126,26 +161,62 @@ Optional:
 DEV_WORKSPACE_ROOT=C:\Users\tiina\Downloads\chan-dashboard
 ```
 
-Preset terminal buttons are enabled. Custom shell commands are blocked unless you explicitly enable them:
+Preset terminal buttons are enabled. Custom shell commands are blocked unless you enable them:
 
 ```env
 DEV_ALLOW_ARBITRARY_COMMANDS=true
 ```
 
-Only use that on your own private PC. The dev terminal is admin-only, but it is still powerful.
+Only enable arbitrary commands on your own private PC.
 
-## Role lock-down
+## Neon SQL changes
 
-Admin sees everything:
+Run `NEON_SCHEMA.sql` in the Neon SQL Editor. It creates/updates:
 
-```txt
-chat, 4chan, reddit, youtube, client radar, email, dev workspace
-```
+- `viewport_deleted_items`
+- `viewport_board_blocks`
+- `viewport_disabled_targets`
+- `viewport_chat_messages`
+- `viewport_presence`
+- `viewport_business_leads`
 
-User 2 sees only:
+The new business table stores saved leads, CRM status, email/phone, offers, follow-up dates, notes, scores, and money tracker data.
 
-```txt
-chat
-```
+## Minimum API/key list
 
-The hiding is server-side too. Non-admin requests to admin APIs return forbidden.
+Required for login + chat + saved data:
+
+- `AUTH_SECRET`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD`
+- `USER_USERNAME` or `FRIEND_USERNAME`
+- `USER_PASSWORD` or `FRIEND_PASSWORD`
+- `DATABASE_URL`
+
+Optional:
+
+- `YOUTUBE_API_KEY`
+- `GOOGLE_MAPS_API_KEY` or `GOOGLE_PLACES_API_KEY`
+- `GMAIL_USER`
+- `GMAIL_APP_PASSWORD`
+- `EMAIL_FROM`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE`
+- `RESEND_API_KEY`
+- `EMAIL_PROVIDER`
+- `DEV_WORKSPACE_ROOT`
+- `DEV_ALLOW_ARBITRARY_COMMANDS`
+- `CHAT_MAX_UPLOAD_MB`
+- `CHAT_TTL_HOURS`
+- `SESSION_DAYS`
+
+## Notes
+
+- User 2 cannot see the money dashboard, dev workspace, browsing modules, YouTube, Reddit, 4chan, or email module.
+- If `DATABASE_URL` is missing, business leads fall back to `.dashboard-data/business-leads.json` on the local PC. For Vercel, use Neon.
+- Demo lead finder works without Google keys so the site can build and run immediately.
+
+### Zoomable real world map
+
+The `/business` radar now uses bundled SVG boundary data, so the map shows real country/coast outlines and works without a map API key. Controls: mouse wheel to zoom, drag to pan, double-click to zoom in, `+`/`-` buttons for phone, `Finland` focus, and `world` reset.

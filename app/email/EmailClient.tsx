@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-type LeadStatus = "new" | "saved" | "contacted" | "interested" | "rejected" | "followup";
+type LeadStatus = "new" | "saved" | "contacted" | "followup" | "interested" | "won" | "rejected";
 
 type BusinessLead = {
   id: string;
@@ -11,6 +11,7 @@ type BusinessLead = {
   category: string;
   address: string;
   phone: string;
+  email: string;
   website: string;
   mapsUrl: string;
   rating: number | null;
@@ -20,6 +21,10 @@ type BusinessLead = {
   score: number;
   status: LeadStatus;
   notes: string;
+  offerPrice: string;
+  packageName: string;
+  nextFollowUp: string;
+  lastContacted: string;
   source: string;
   createdAt: string;
   updatedAt: string;
@@ -75,7 +80,7 @@ export default function EmailClient({ username }: { username: string }) {
     if (!response.ok) throw new Error(String(data.error || "lead load failed"));
     const next = Array.isArray(data.leads) ? data.leads as BusinessLead[] : [];
     setLeads(next);
-    if (!selectedId && next[0]) setSelectedId(next[0].id);
+    if (!selectedId && next[0]) { setSelectedId(next[0].id); setTo(next[0].email || ""); }
     setStatus(`${next.length} saved leads loaded`);
   }
 
@@ -86,7 +91,8 @@ export default function EmailClient({ username }: { username: string }) {
       return;
     }
     setSubject(`Quick website idea for ${lead.name}`);
-    setBody(template(lead, price, tone));
+    setTo(lead.email || to);
+    setBody(template(lead, lead.offerPrice || price, tone));
     setStatus(`draft generated for ${lead.name}`);
   }
 
@@ -104,7 +110,7 @@ export default function EmailClient({ username }: { username: string }) {
       const response = await fetch("/api/business/leads", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selected.id, status: "contacted", notes: `${selected.notes || ""}\nContacted: ${new Date().toLocaleString()}`.trim() }),
+        body: JSON.stringify({ id: selected.id, status: "contacted", lastContacted: new Date().toISOString(), notes: `${selected.notes || ""}\nContacted: ${new Date().toLocaleString()}`.trim() }),
       });
       const data = await readJson(response);
       if (!response.ok) throw new Error(String(data.error || "update failed"));
@@ -166,7 +172,7 @@ export default function EmailClient({ username }: { username: string }) {
         <section className="panel stack">
           <h2>Lead + offer</h2>
           <label className="stack small">Saved lead
-            <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>
+            <select value={selectedId} onChange={(event) => { setSelectedId(event.target.value); const lead = leads.find((item) => item.id === event.target.value); if (lead?.email) setTo(lead.email); }}>
               <option value="">select lead</option>
               {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name} · {lead.status} · score {lead.score}</option>)}
             </select>
@@ -188,7 +194,7 @@ export default function EmailClient({ username }: { username: string }) {
           {selected && (
             <div className="card stack">
               <strong>{selected.name}</strong>
-              <p className="muted small">{selected.category} · {selected.website ? selected.website : "no website found"}</p>
+              <p className="muted small">{selected.category} · {selected.email || "no email saved"} · {selected.website ? selected.website : "no website found"}</p>
               <p className="muted small">{selected.address}</p>
             </div>
           )}

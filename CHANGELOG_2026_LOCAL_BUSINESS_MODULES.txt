@@ -1,0 +1,89 @@
+CHANGES MADE
+============
+
+1) User 2 lock-down
+- User 2 / normal user now sees only Chat and logout in the top navigation.
+- User 2 is redirected to /chat from admin pages.
+- Admin-only API routes are protected with requireAdmin.
+- Admin account still sees all modules.
+
+2) Business / money dashboard upgrades
+- Replaced the old simple Client Radar UI with a full Local Business Money Dashboard.
+- Added modules inside /business:
+  - Lead Finder / Google Places local radar
+  - Business Audit checklist
+  - Offer Builder
+  - English + Finnish Pitch Generator
+  - Demo Landing Page HTML Generator
+  - Mini CRM
+  - Follow-up Tracker
+  - Niche Template Library
+  - Text/Content Generator
+  - Money/Pipeline Tracker
+- Added manual lead entry.
+- Added email, offer price, package name, follow-up date, last contacted fields.
+- Added new lead status: won.
+
+3) Neon business lead storage
+- Saved business leads now use Neon when DATABASE_URL is set.
+- Local fallback still works through .dashboard-data/business-leads.json when DATABASE_URL is missing.
+- Added viewport_business_leads table to NEON_SCHEMA.sql.
+
+4) Email module update
+- Email module now reads saved lead emails.
+- Generated outreach uses saved lead offer price when available.
+- Mark contacted now records lastContacted.
+
+APIS / ENV VARS
+===============
+
+Required:
+AUTH_SECRET
+ADMIN_USERNAME
+ADMIN_PASSWORD
+USER_USERNAME or FRIEND_USERNAME
+USER_PASSWORD or FRIEND_PASSWORD
+DATABASE_URL
+
+Optional:
+SESSION_DAYS
+CHAT_MAX_UPLOAD_MB
+CHAT_TTL_HOURS
+YOUTUBE_API_KEY
+GOOGLE_MAPS_API_KEY or GOOGLE_PLACES_API_KEY
+EMAIL_PROVIDER
+GMAIL_USER
+GMAIL_APP_PASSWORD
+EMAIL_FROM
+SMTP_HOST
+SMTP_PORT
+SMTP_SECURE
+RESEND_API_KEY
+DEV_WORKSPACE_ROOT
+DEV_ALLOW_ARBITRARY_COMMANDS
+
+NEON SQL
+========
+
+Run NEON_SCHEMA.sql in Neon SQL Editor. New/changed table:
+viewport_business_leads
+
+BUILD CHECK
+===========
+
+TypeScript check passed with:
+npx --yes tsc --noEmit
+
+Next build compiled, ran TypeScript, generated pages, and printed the route table in this sandbox, but the sandbox command wrapper timed out after final optimization output. On your Windows machine, use:
+
+npx --yes pnpm@10.13.1 build > build-log.txt 2>&1 && notepad build-log.txt
+
+If Notepad does not open after a failure:
+
+npx --yes pnpm@10.13.1 build > build-log.txt 2>&1 & notepad build-log.txt
+
+2026-07-08 map upgrade:
+- Replaced the fake blob-style terminal map with a real SVG world map generated from bundled country/coastline boundary data.
+- Added zoom buttons, wheel zoom, double-click zoom, drag-to-pan, world reset, and Finland focus.
+- Map now renders hundreds of real country-border segments, coastlines, and land polygons without needing any map API key.
+- Lead pins still work on top of the map and zoom to a selected business when clicked.

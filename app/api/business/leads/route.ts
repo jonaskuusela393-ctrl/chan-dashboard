@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
       category: String(body.category || "business"),
       address: String(body.address || ""),
       phone: String(body.phone || ""),
+      email: String(body.email || ""),
       website: String(body.website || ""),
       mapsUrl: String(body.mapsUrl || ""),
       rating: typeof body.rating === "number" ? body.rating : null,
@@ -39,6 +40,10 @@ export async function POST(req: NextRequest) {
       score: Number(body.score || 0),
       status: body.status || "saved",
       notes: String(body.notes || ""),
+      offerPrice: String(body.offerPrice || "300€"),
+      packageName: String(body.packageName || "Starter Website"),
+      nextFollowUp: String(body.nextFollowUp || ""),
+      lastContacted: String(body.lastContacted || ""),
       source: String(body.source || "manual"),
     });
     return NextResponse.json({ ok: true, lead });
