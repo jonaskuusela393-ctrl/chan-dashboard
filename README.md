@@ -12,6 +12,8 @@ Admin account sees everything:
 - Private chat
 - Local Business Money Dashboard
   - Lead finder / local radar
+  - Website email/contact-form finder
+  - Weak-site/upgradable-company filter
   - Business audit checklist
   - Offer builder
   - English + Finnish pitch generator
@@ -121,6 +123,19 @@ GOOGLE_PLACES_API_KEY=your_google_places_key
 
 The dashboard still works in demo mode without this key. Do not scrape Google Maps. The live lead finder uses the official Google Places API.
 
+
+### Website email/contact finder
+
+No new API key is required. The dashboard scans the business website that Google Places returns, checks homepage/contact/yhteystiedot-style pages, and tries to extract:
+
+- public business emails
+- contact form URLs
+- `tel:` links
+- Facebook / Instagram links
+- weak-site upgrade signals such as missing mobile viewport, tiny homepage, old markup, or hard-to-find contact path
+
+This is not Google data. It only reads public business websites and stores the first useful email/contact form in the CRM.
+
 ### Email sending
 
 No API is required for copy/mailto mode. The easiest workflow is:
@@ -180,7 +195,7 @@ Run `NEON_SCHEMA.sql` in the Neon SQL Editor. It creates/updates:
 - `viewport_presence`
 - `viewport_business_leads`
 
-The new business table stores saved leads, CRM status, email/phone, offers, follow-up dates, notes, scores, and money tracker data.
+The business table stores saved leads, CRM status, email/phone/contact form, social links, site quality, scan notes, offers, follow-up dates, scores, and money tracker data.
 
 ## Minimum API/key list
 
@@ -197,6 +212,7 @@ Optional:
 
 - `YOUTUBE_API_KEY`
 - `GOOGLE_MAPS_API_KEY` or `GOOGLE_PLACES_API_KEY`
+- No extra env var is needed for website email/contact scanning
 - `GMAIL_USER`
 - `GMAIL_APP_PASSWORD`
 - `EMAIL_FROM`
@@ -220,3 +236,12 @@ Optional:
 ### Zoomable real world map
 
 The `/business` radar now uses bundled SVG boundary data, so the map shows real country/coast outlines and works without a map API key. Controls: mouse wheel to zoom, drag to pan, double-click to zoom in, `+`/`-` buttons for phone, `Finland` focus, and `world` reset.
+
+
+## 2026 contact workflow
+
+1. Search a niche/city in `/business`.
+2. Use the lead filter: `best opportunities`, `no website`, or `has site but upgradeable`.
+3. Press `scan visible sites` to check websites for emails/contact forms and weak-site signals.
+4. Open a lead, press `scan + save`, then use the pitch/demo/email modules.
+5. For companies with existing sites, pitch an upgrade instead of a full new site: clearer mobile page, contact buttons, better service text, before/after photos, Google profile text, and review request system.

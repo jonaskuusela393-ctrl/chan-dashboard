@@ -377,6 +377,26 @@ p:last-child {
   margin-bottom: 0;
 }
 
+strong,
+p,
+span,
+small,
+label,
+.card,
+.panel,
+.post,
+.thread {
+  overflow-wrap: anywhere;
+}
+
+input[type="date"] {
+  color-scheme: dark;
+}
+
+select {
+  appearance: auto;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -411,7 +431,8 @@ p:last-child {
 
 pre {
   white-space: pre-wrap;
-  overflow-x: auto;
+  overflow: auto;
+  max-height: min(62vh, 720px);
   background: #030303;
   color: var(--text);
   padding: 11px;
@@ -831,6 +852,12 @@ iframe {
   justify-content: space-between;
   text-align: left;
   white-space: normal;
+  align-items: flex-start;
+}
+
+.lead-row .badge,
+.file-node .badge {
+  flex: 0 0 auto;
 }
 
 .lead-row > span:first-child,
@@ -985,5 +1012,47 @@ iframe {
   .chip-row button {
     flex: 1 1 auto;
     width: auto;
+  }
+}
+
+/* Final mobile/UI polish */
+.panel > :last-child,
+.card > :last-child {
+  margin-bottom: 0;
+}
+
+.module-tabs {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.module-tabs button {
+  flex: 0 0 auto;
+}
+
+.terminal-map pre,
+.lead-list pre {
+  max-height: 300px;
+}
+
+@media (max-width: 850px) {
+  .module-tabs {
+    flex-wrap: nowrap;
+  }
+
+  .module-tabs button {
+    min-width: max-content;
+  }
+
+  .lead-list {
+    max-height: 430px;
+  }
+
+  .lead-row {
+    gap: 8px;
+  }
+
+  .tight-grid {
+    grid-template-columns: 1fr;
   }
 }

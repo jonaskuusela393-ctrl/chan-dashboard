@@ -87,3 +87,13 @@ npx --yes pnpm@10.13.1 build > build-log.txt 2>&1 & notepad build-log.txt
 - Added zoom buttons, wheel zoom, double-click zoom, drag-to-pan, world reset, and Finland focus.
 - Map now renders hundreds of real country-border segments, coastlines, and land polygons without needing any map API key.
 - Lead pins still work on top of the map and zoom to a selected business when clicked.
+
+2026-07-08 contact finder + UI pass
+- Added `/api/business/contact-scan` to scan public business websites for emails, contact forms, tel links, Facebook, Instagram, and weak-site signals.
+- Added CRM fields for contact form URL, Facebook/Instagram links, contact status, site quality, site notes, and last scan time.
+- Added Neon schema columns/indexes for the new contact/website quality fields.
+- Added lead filters for best opportunities, no website, has site but upgradeable, contact found, and all results.
+- Added `scan visible sites`, `find email/form`, and `scan + save` buttons.
+- Improved search result rows and lead panels to show whether a business has no site, a weak site, contact form, email, phone, or unchecked site.
+- Fixed unsaved search leads so manual edits/status changes save cleanly instead of failing with “lead not found.”
+- Did a CSS/UI pass for better wrapping, mobile controls, scroll containment, and long URL/text handling across pages.

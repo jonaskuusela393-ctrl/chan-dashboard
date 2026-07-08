@@ -6,6 +6,7 @@ import { MAP_HEIGHT, MAP_WIDTH, WORLD_COAST_PATHS, WORLD_COUNTRY_PATHS, WORLD_LA
 
 type LeadStatus = "new" | "saved" | "contacted" | "followup" | "interested" | "won" | "rejected";
 type BusinessTab = "radar" | "audit" | "offer" | "pitch" | "demo" | "crm" | "templates" | "content" | "money";
+type LeadFilter = "opportunity" | "no_site" | "upgrade_site" | "has_contact" | "all";
 
 type BusinessLead = {
   id: string;
@@ -14,6 +15,13 @@ type BusinessLead = {
   address: string;
   phone: string;
   email: string;
+  contactFormUrl: string;
+  facebookUrl: string;
+  instagramUrl: string;
+  contactStatus: string;
+  siteQuality: string;
+  siteNotes: string;
+  lastScannedAt: string;
   website: string;
   mapsUrl: string;
   rating: number | null;
@@ -43,6 +51,26 @@ type WebsiteCheck = {
   weak?: boolean;
   bytes?: number;
   error?: string;
+};
+
+type ContactScan = {
+  ok?: boolean;
+  error?: string;
+  finalUrl?: string;
+  title?: string;
+  emails?: string[];
+  contactForms?: string[];
+  contactFormUrl?: string;
+  phoneLinks?: string[];
+  facebookUrl?: string;
+  instagramUrl?: string;
+  linkedinUrl?: string;
+  contactStatus?: string;
+  siteQuality?: string;
+  siteNotes?: string;
+  upgradeScore?: number;
+  scannedAt?: string;
+  pagesScanned?: Array<{ url: string; status: number; title: string; bytes: number; hasViewport: boolean; hasContactWords: boolean; hasForm: boolean; hasOldMarkup: boolean }>;
 };
 
 const STATUSES: LeadStatus[] = ["new", "saved", "contacted", "followup", "interested", "won", "rejected"];
@@ -138,19 +166,42 @@ function websiteLabel(lead: BusinessLead) {
 }
 
 function leadContact(lead: BusinessLead) {
-  return lead.email || lead.phone || "no contact saved";
+  if (lead.email) return lead.email;
+  if (lead.contactFormUrl) return "contact form";
+  if (lead.phone) return lead.phone;
+  return "no contact saved";
+}
+
+function siteLabel(lead: BusinessLead) {
+  if (!lead.website) return "no site";
+  if (lead.siteQuality === "weak") return "weak site";
+  if (lead.siteQuality === "needs_review") return "review site";
+  if (lead.siteQuality === "ok") return "site ok";
+  return "site unchecked";
+}
+
+function contactBadge(lead: BusinessLead) {
+  if (lead.email) return "email";
+  if (lead.contactFormUrl) return "form";
+  if (lead.phone) return "phone";
+  return "no contact";
 }
 
 function shortLeadLine(lead: BusinessLead) {
-  return `${lead.category} · ${websiteLabel(lead)} · ${leadContact(lead)} · score ${lead.score}`;
+  return `${lead.category} · ${siteLabel(lead)} · ${contactBadge(lead)} · score ${lead.score}`;
+}
+
+function leadHasUpgradePotential(lead: BusinessLead) {
+  return Boolean(lead.website) && (lead.siteQuality === "weak" || lead.siteQuality === "needs_review" || lead.score >= 45);
 }
 
 function auditItems(lead: BusinessLead | null, check: WebsiteCheck | null) {
   const name = lead?.name || "Selected business";
   const items = [
     { label: "No proper website found", bad: Boolean(lead && !lead.website), fix: "Offer a clean one-page website with photos, services, and quote buttons." },
-    { label: "No saved email", bad: Boolean(lead && !lead.email), fix: "Find email manually from their site/Facebook/Google before sending." },
-    { label: "Weak mobile/contact signals", bad: Boolean(check?.weak || (check && !check.hasContact)), fix: "Make call/message buttons obvious above the fold." },
+    { label: "No saved email/contact form", bad: Boolean(lead && !lead.email && !lead.contactFormUrl), fix: "Run the email/form finder or use the business contact form first." },
+    { label: "Existing site could use upgrading", bad: Boolean(leadHasUpgradePotential(lead as BusinessLead)), fix: "Pitch a cleaner mobile page, better service text, and easier quote path." },
+    { label: "Weak mobile/contact signals", bad: Boolean(check?.weak || (check && !check.hasContact) || lead?.siteQuality === "weak"), fix: "Make call/message buttons obvious above the fold." },
     { label: "Low or risky rating", bad: Boolean(lead?.rating && lead.rating < 4.3), fix: "Offer review-request text and a better customer flow." },
     { label: "Enough reviews to be worth targeting", bad: Boolean(lead?.userRatingCount && lead.userRatingCount >= 5), fix: "They have real customers, so a better site can actually matter." },
   ];
@@ -381,12 +432,13 @@ export default function BusinessClient({ username }: { username: string }) {
   const [lat, setLat] = useState("60.25");
   const [lng, setLng] = useState("24.07");
   const [radius, setRadius] = useState("15000");
-  const [onlyNoWebsite, setOnlyNoWebsite] = useState(true);
+  const [leadFilter, setLeadFilter] = useState<LeadFilter>("opportunity");
   const [minScore, setMinScore] = useState("0");
   const [results, setResults] = useState<BusinessLead[]>([]);
   const [saved, setSaved] = useState<BusinessLead[]>([]);
   const [selected, setSelected] = useState<BusinessLead | null>(null);
   const [websiteCheck, setWebsiteCheck] = useState<WebsiteCheck | null>(null);
+  const [contactScan, setContactScan] = useState<ContactScan | null>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("client system ready");
   const [manualName, setManualName] = useState("");
@@ -404,10 +456,16 @@ export default function BusinessClient({ username }: { username: string }) {
   const filteredResults = useMemo(() => {
     const score = Number(minScore) || 0;
     return results
-      .filter((lead) => (onlyNoWebsite ? !lead.website : true))
+      .filter((lead) => {
+        if (leadFilter === "no_site") return !lead.website;
+        if (leadFilter === "upgrade_site") return leadHasUpgradePotential(lead);
+        if (leadFilter === "has_contact") return Boolean(lead.email || lead.contactFormUrl || lead.phone);
+        if (leadFilter === "opportunity") return !lead.website || leadHasUpgradePotential(lead) || lead.score >= 55;
+        return true;
+      })
       .filter((lead) => lead.score >= score)
       .sort((a, b) => b.score - a.score);
-  }, [results, onlyNoWebsite, minScore]);
+  }, [results, leadFilter, minScore]);
 
   const allMapLeads = useMemo(() => {
     const map = new Map<string, BusinessLead>();
@@ -426,6 +484,23 @@ export default function BusinessClient({ username }: { username: string }) {
     return { savedCount, contacted, won: won.length, interested, followups, wonRevenue, pipeline };
   }, [saved, price]);
 
+  function mergeLeadLocal(next: BusinessLead) {
+    setSelected(next);
+    setResults((old) => old.map((lead) => lead.id === next.id ? { ...lead, ...next } : lead));
+    setSaved((old) => old.map((lead) => lead.id === next.id ? { ...lead, ...next } : lead));
+  }
+
+  function isSavedLead(lead: BusinessLead) {
+    return saved.some((item) => item.id === lead.id);
+  }
+
+  async function commitLead(lead: BusinessLead, patch: Partial<BusinessLead>) {
+    const next = { ...lead, ...patch } as BusinessLead;
+    mergeLeadLocal(next);
+    if (isSavedLead(lead)) await updateLead(lead, patch);
+    else await saveLead(next, (patch.status as LeadStatus) || "saved");
+  }
+
   async function loadSaved() {
     const response = await fetch("/api/business/leads", { cache: "no-store" });
     const data = await readJson(response);
@@ -438,6 +513,7 @@ export default function BusinessClient({ username }: { username: string }) {
   async function search(demo = false) {
     setLoading(true);
     setWebsiteCheck(null);
+    setContactScan(null);
     setStatus(demo ? "loading demo radar..." : "searching Google Places/local radar...");
     try {
       const params = new URLSearchParams({ q: query, location, lat, lng, radius });
@@ -484,7 +560,7 @@ export default function BusinessClient({ username }: { username: string }) {
       const data = await readJson(response);
       if (!response.ok) throw new Error(String(data.error || "update failed"));
       const next = data.lead as BusinessLead;
-      setSelected(next);
+      mergeLeadLocal(next);
       await loadSaved();
       setStatus(`updated lead: ${lead.name}`);
     } catch (error) {
@@ -522,6 +598,65 @@ export default function BusinessClient({ username }: { username: string }) {
     }
   }
 
+  async function scanContact(lead: BusinessLead, persist = isSavedLead(lead)) {
+    if (!lead.website) {
+      const next = { ...lead, siteQuality: "no_site", contactStatus: lead.phone ? "phone" : "unknown", siteNotes: "No website found from Google Places. Phone or manual search is the main contact path." };
+      mergeLeadLocal(next);
+      setContactScan({ ok: false, error: "No website to scan. This is still a good web-design lead, but email finder needs a site." });
+      setStatus("no website to scan");
+      return;
+    }
+
+    setStatus(`finding email/contact form for ${lead.name}...`);
+    setContactScan(null);
+    try {
+      const response = await fetch(`/api/business/contact-scan?url=${encodeURIComponent(lead.website)}`, { cache: "no-store" });
+      const data = await readJson(response) as ContactScan;
+      setContactScan(data);
+      if (!response.ok || !data.ok) throw new Error(String(data.error || "contact scan failed"));
+
+      const patch: Partial<BusinessLead> = {
+        email: data.emails?.[0] || lead.email || "",
+        contactFormUrl: data.contactFormUrl || data.contactForms?.[0] || lead.contactFormUrl || "",
+        facebookUrl: data.facebookUrl || lead.facebookUrl || "",
+        instagramUrl: data.instagramUrl || lead.instagramUrl || "",
+        contactStatus: data.contactStatus || lead.contactStatus || "website",
+        siteQuality: data.siteQuality || lead.siteQuality || "unchecked",
+        siteNotes: data.siteNotes || lead.siteNotes || "",
+        lastScannedAt: data.scannedAt || new Date().toISOString(),
+        score: Math.max(lead.score || 0, Number(data.upgradeScore || 0)),
+      };
+      const next = { ...lead, ...patch } as BusinessLead;
+      mergeLeadLocal(next);
+      setStatus(`${lead.name}: ${patch.email ? "email found" : patch.contactFormUrl ? "contact form found" : patch.contactStatus || "scan done"} · site ${patch.siteQuality || "checked"}`);
+      if (persist) {
+        if (isSavedLead(lead)) await updateLead(lead, patch);
+        else await saveLead(next, "saved");
+      }
+    } catch (error) {
+      setContactScan((old) => old || { ok: false, error: err(error, "contact scan failed") });
+      setStatus(err(error, "contact scan failed"));
+    }
+  }
+
+  async function scanVisibleWebsites() {
+    const targets = filteredResults.filter((lead) => lead.website).slice(0, 10);
+    if (!targets.length) {
+      setStatus("no visible website leads to scan");
+      return;
+    }
+    setLoading(true);
+    try {
+      for (let i = 0; i < targets.length; i += 1) {
+        setStatus(`scanning ${i + 1}/${targets.length}: ${targets[i].name}`);
+        await scanContact(targets[i], false);
+      }
+      setStatus(`scanned ${targets.length} website leads · switch filter to upgradeable sites/contact found`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function saveManualLead() {
     if (!manualName.trim()) {
       setStatus("manual lead needs a business name");
@@ -534,6 +669,13 @@ export default function BusinessClient({ username }: { username: string }) {
       address: manualCity,
       phone: manualPhone,
       email: manualEmail,
+      contactFormUrl: "",
+      facebookUrl: "",
+      instagramUrl: "",
+      contactStatus: manualEmail ? "email" : manualPhone ? "phone" : manualWebsite ? "website" : "unknown",
+      siteQuality: manualWebsite ? "unchecked" : "no_site",
+      siteNotes: "",
+      lastScannedAt: "",
       website: manualWebsite,
       mapsUrl: "",
       rating: null,
@@ -615,12 +757,21 @@ export default function BusinessClient({ username }: { username: string }) {
                 <label className="stack small">Radius meters<input value={radius} onChange={(event) => setRadius(event.target.value)} /></label>
                 <label className="stack small">Min score<input value={minScore} onChange={(event) => setMinScore(event.target.value)} /></label>
               </div>
-              <label className="checkline"><input type="checkbox" checked={onlyNoWebsite} onChange={(event) => setOnlyNoWebsite(event.target.checked)} /> show no-website leads first</label>
+              <label className="stack small">Lead filter
+                <select value={leadFilter} onChange={(event) => setLeadFilter(event.target.value as LeadFilter)}>
+                  <option value="opportunity">best opportunities</option>
+                  <option value="no_site">no website</option>
+                  <option value="upgrade_site">has site but upgradeable</option>
+                  <option value="has_contact">contact found</option>
+                  <option value="all">all results</option>
+                </select>
+              </label>
               <div className="row">
                 <button onClick={() => void search(false)} disabled={loading}>search live</button>
                 <button onClick={() => void search(true)} disabled={loading}>demo map</button>
+                <button onClick={() => void scanVisibleWebsites()} disabled={loading || !filteredResults.some((lead) => lead.website)}>scan visible sites</button>
               </div>
-              <p className="muted small">Live search needs GOOGLE_MAPS_API_KEY. Demo mode works without keys.</p>
+              <p className="muted small">Live search needs GOOGLE_MAPS_API_KEY. Use “scan visible sites” to find emails/contact forms and identify weak sites worth upgrading.</p>
             </section>
             <TerminalWorldMap leads={allMapLeads} selected={current} onSelect={setSelected} />
           </div>
@@ -633,7 +784,7 @@ export default function BusinessClient({ username }: { username: string }) {
                 {filteredResults.map((lead) => (
                   <button className={`lead-row ${selected?.id === lead.id ? "active" : ""}`} key={lead.id} onClick={() => setSelected(lead)}>
                     <span><strong>{lead.name}</strong><span className="muted small">{shortLeadLine(lead)}</span></span>
-                    <span className={lead.website ? "badge" : "badge warn"}>{lead.website ? "site" : "no site"}</span>
+                    <span className={!lead.website || lead.siteQuality === "weak" ? "badge warn" : "badge"}>{siteLabel(lead)}</span>
                   </button>
                 ))}
               </div>
@@ -648,23 +799,32 @@ export default function BusinessClient({ username }: { username: string }) {
                     <p><span className="dim small">email</span><br />{current.email || "none"}</p>
                     <p><span className="dim small">rating</span><br />{num(current.rating)} ({current.userRatingCount ?? "?"})</p>
                     <p><span className="dim small">offer</span><br />{current.packageName || packageName} · {current.offerPrice || price}</p>
+                    <p><span className="dim small">contact status</span><br />{contactBadge(current)}</p>
+                    <p><span className="dim small">site quality</span><br />{siteLabel(current)}</p>
                   </div>
                   <div className="row">
                     {current.mapsUrl && <a className="buttonlike" href={current.mapsUrl} target="_blank" rel="noreferrer">open maps</a>}
                     {current.website && <a className="buttonlike" href={current.website} target="_blank" rel="noreferrer">open site</a>}
+                    {current.contactFormUrl && <a className="buttonlike" href={current.contactFormUrl} target="_blank" rel="noreferrer">contact form</a>}
+                    {current.facebookUrl && <a className="buttonlike" href={current.facebookUrl} target="_blank" rel="noreferrer">facebook</a>}
+                    {current.instagramUrl && <a className="buttonlike" href={current.instagramUrl} target="_blank" rel="noreferrer">instagram</a>}
                     <button onClick={() => void saveLead(current, "saved")}>save</button>
                     <button onClick={() => { setTab("pitch"); copy(pitch, "pitch copied"); }}>copy pitch</button>
-                    <button onClick={() => void checkWebsite(current)}>check site</button>
+                    <button onClick={() => void scanContact(current, false)}>find email/form</button>
+                    <button onClick={() => void scanContact(current, true)}>scan + save</button>
+                    <button onClick={() => void checkWebsite(current)}>quick check</button>
                   </div>
-                  {websiteCheck && <pre>{JSON.stringify(websiteCheck, null, 2)}</pre>}
+                  {(websiteCheck || contactScan) && <pre>{JSON.stringify({ websiteCheck, contactScan }, null, 2)}</pre>}
+                  {current.siteNotes && <p className="muted small">site notes: {current.siteNotes}</p>}
                   <div className="grid tight-grid">
-                    <label className="stack small">Email<input value={current.email || ""} onChange={(event) => setSelected({ ...current, email: event.target.value })} onBlur={(event) => void updateLead(current, { email: event.target.value })} /></label>
-                    <label className="stack small">Phone<input value={current.phone || ""} onChange={(event) => setSelected({ ...current, phone: event.target.value })} onBlur={(event) => void updateLead(current, { phone: event.target.value })} /></label>
-                    <label className="stack small">Offer price<input value={current.offerPrice || price} onChange={(event) => setSelected({ ...current, offerPrice: event.target.value })} onBlur={(event) => void updateLead(current, { offerPrice: event.target.value })} /></label>
-                    <label className="stack small">Follow-up date<input type="date" value={current.nextFollowUp || ""} onChange={(event) => setSelected({ ...current, nextFollowUp: event.target.value })} onBlur={(event) => void updateLead(current, { nextFollowUp: event.target.value })} /></label>
+                    <label className="stack small">Email<input value={current.email || ""} onChange={(event) => setSelected({ ...current, email: event.target.value })} onBlur={(event) => void commitLead(current, { email: event.target.value, contactStatus: event.target.value ? "email" : current.contactStatus })} /></label>
+                    <label className="stack small">Contact form<input value={current.contactFormUrl || ""} onChange={(event) => setSelected({ ...current, contactFormUrl: event.target.value })} onBlur={(event) => void commitLead(current, { contactFormUrl: event.target.value, contactStatus: current.email ? "email" : event.target.value ? "form" : current.contactStatus })} /></label>
+                    <label className="stack small">Phone<input value={current.phone || ""} onChange={(event) => setSelected({ ...current, phone: event.target.value })} onBlur={(event) => void commitLead(current, { phone: event.target.value })} /></label>
+                    <label className="stack small">Offer price<input value={current.offerPrice || price} onChange={(event) => setSelected({ ...current, offerPrice: event.target.value })} onBlur={(event) => void commitLead(current, { offerPrice: event.target.value })} /></label>
+                    <label className="stack small">Follow-up date<input type="date" value={current.nextFollowUp || ""} onChange={(event) => setSelected({ ...current, nextFollowUp: event.target.value })} onBlur={(event) => void commitLead(current, { nextFollowUp: event.target.value })} /></label>
                   </div>
-                  <label className="stack small">Notes<textarea value={current.notes || ""} onChange={(event) => setSelected({ ...current, notes: event.target.value })} onBlur={(event) => void updateLead(current, { notes: event.target.value, status: current.status === "new" ? "saved" : current.status })} placeholder="what to offer, contact result, follow-up date..." /></label>
-                  <div className="row">{STATUSES.map((nextStatus) => <button key={nextStatus} className={current.status === nextStatus ? "active-btn" : ""} onClick={() => void updateLead(current, { status: nextStatus, lastContacted: nextStatus === "contacted" ? new Date().toISOString() : current.lastContacted })}>{nextStatus}</button>)}</div>
+                  <label className="stack small">Notes<textarea value={current.notes || ""} onChange={(event) => setSelected({ ...current, notes: event.target.value })} onBlur={(event) => void commitLead(current, { notes: event.target.value, status: current.status === "new" ? "saved" : current.status })} placeholder="what to offer, contact result, follow-up date..." /></label>
+                  <div className="row">{STATUSES.map((nextStatus) => <button key={nextStatus} className={current.status === nextStatus ? "active-btn" : ""} onClick={() => void commitLead(current, { status: nextStatus, lastContacted: nextStatus === "contacted" ? new Date().toISOString() : current.lastContacted })}>{nextStatus}</button>)}</div>
                 </>
               )}
             </section>
@@ -687,7 +847,7 @@ export default function BusinessClient({ username }: { username: string }) {
           <h2>Offer builder</h2>
           <div className="grid tight-grid"><label className="stack small">Default price<input value={price} onChange={(event) => setPrice(event.target.value)} /></label><label className="stack small">Package name<input value={packageName} onChange={(event) => setPackageName(event.target.value)} /></label></div>
           <div className="grid">
-            {PACKAGES.map((pack) => <div className="card stack" key={pack.name}><p className="badge">{pack.price}</p><h3>{pack.name}</h3><p className="muted small">{pack.text}</p><button onClick={() => { setPackageName(pack.name); setPrice(pack.price); if (current) void updateLead(current, { packageName: pack.name, offerPrice: pack.price }); }}>use package</button></div>)}
+            {PACKAGES.map((pack) => <div className="card stack" key={pack.name}><p className="badge">{pack.price}</p><h3>{pack.name}</h3><p className="muted small">{pack.text}</p><button onClick={() => { setPackageName(pack.name); setPrice(pack.price); if (current) void commitLead(current, { packageName: pack.name, offerPrice: pack.price }); }}>use package</button></div>)}
           </div>
           <pre>{`Current offer:\n${packageName} · ${price}\n\nSimple promise:\nI make your business easier to find, understand, and contact from phone.`}</pre>
         </section>
@@ -721,7 +881,7 @@ export default function BusinessClient({ username }: { username: string }) {
             <button onClick={() => void saveManualLead()}>save manual lead</button>
           </div>
           <div className="grid">
-            {saved.map((lead) => <div className="card stack" key={lead.id}><div className="spread"><div><strong>{lead.name}</strong><p className="muted small">{shortLeadLine(lead)}</p></div><span className="badge">{lead.status}</span></div><p className="muted small">follow-up: {lead.nextFollowUp || "none"} · offer: {lead.packageName || "package"} {lead.offerPrice || price}</p><div className="row"><button onClick={() => { setSelected(lead); setTab("radar"); }}>open</button><button onClick={() => void updateLead(lead, { status: "followup", nextFollowUp: todayPlus(3) })}>follow up +3d</button><button onClick={() => copy(pitchText(lead, lead.offerPrice || price, lead.packageName || packageName, tone), "pitch copied")}>copy pitch</button><button className="danger" onClick={() => void removeLead(lead)}>X</button></div></div>)}
+            {saved.map((lead) => <div className="card stack" key={lead.id}><div className="spread"><div><strong>{lead.name}</strong><p className="muted small">{shortLeadLine(lead)}</p></div><span className="badge">{lead.status}</span></div><p className="muted small">follow-up: {lead.nextFollowUp || "none"} · offer: {lead.packageName || "package"} {lead.offerPrice || price} · {siteLabel(lead)} · {contactBadge(lead)}</p><div className="row"><button onClick={() => { setSelected(lead); setTab("radar"); }}>open</button><button onClick={() => void scanContact(lead, true)}>scan</button><button onClick={() => void updateLead(lead, { status: "followup", nextFollowUp: todayPlus(3) })}>follow up +3d</button><button onClick={() => copy(pitchText(lead, lead.offerPrice || price, lead.packageName || packageName, tone), "pitch copied")}>copy pitch</button><button className="danger" onClick={() => void removeLead(lead)}>X</button></div></div>)}
           </div>
         </section>
       )}

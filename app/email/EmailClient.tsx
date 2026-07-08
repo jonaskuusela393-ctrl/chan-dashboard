@@ -12,6 +12,13 @@ type BusinessLead = {
   address: string;
   phone: string;
   email: string;
+  contactFormUrl: string;
+  facebookUrl: string;
+  instagramUrl: string;
+  contactStatus: string;
+  siteQuality: string;
+  siteNotes: string;
+  lastScannedAt: string;
   website: string;
   mapsUrl: string;
   rating: number | null;
@@ -172,9 +179,9 @@ export default function EmailClient({ username }: { username: string }) {
         <section className="panel stack">
           <h2>Lead + offer</h2>
           <label className="stack small">Saved lead
-            <select value={selectedId} onChange={(event) => { setSelectedId(event.target.value); const lead = leads.find((item) => item.id === event.target.value); if (lead?.email) setTo(lead.email); }}>
+            <select value={selectedId} onChange={(event) => { setSelectedId(event.target.value); const lead = leads.find((item) => item.id === event.target.value); setTo(lead?.email || ""); }}>
               <option value="">select lead</option>
-              {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name} · {lead.status} · score {lead.score}</option>)}
+              {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name} · {lead.email ? "email" : lead.contactFormUrl ? "form" : lead.phone ? "phone" : "no contact"} · {lead.siteQuality || "site ?"}</option>)}
             </select>
           </label>
           <label className="stack small">Recipient email
@@ -194,7 +201,7 @@ export default function EmailClient({ username }: { username: string }) {
           {selected && (
             <div className="card stack">
               <strong>{selected.name}</strong>
-              <p className="muted small">{selected.category} · {selected.email || "no email saved"} · {selected.website ? selected.website : "no website found"}</p>
+              <p className="muted small">{selected.category} · {selected.email || selected.contactFormUrl || selected.phone || "no contact saved"} · {selected.website ? selected.website : "no website found"}</p>
               <p className="muted small">{selected.address}</p>
             </div>
           )}
@@ -202,13 +209,14 @@ export default function EmailClient({ username }: { username: string }) {
             <button onClick={generate}>generate</button>
             <button onClick={copyDraft}>copy draft</button>
             <a className="buttonlike" href={mailto}>open mail app</a>
+            {selected?.contactFormUrl && <a className="buttonlike" href={selected.contactFormUrl} target="_blank" rel="noreferrer">open contact form</a>}
             <button onClick={() => void markContacted()} disabled={!selected}>mark contacted</button>
           </div>
           <div className="row">
-            <button className="warn" onClick={() => void sendEmail("gmail")} disabled={loading}>send via Gmail/SMTP</button>
-            <button onClick={() => void sendEmail("auto")} disabled={loading}>send via configured provider</button>
+            <button className="warn" onClick={() => void sendEmail("gmail")} disabled={loading || !to}>send via Gmail/SMTP</button>
+            <button onClick={() => void sendEmail("auto")} disabled={loading || !to}>send via configured provider</button>
           </div>
-          <p className="muted small">For Gmail direct sending, set GMAIL_USER and GMAIL_APP_PASSWORD. Without that, use copy draft or open mail app.</p>
+          <p className="muted small">For Gmail direct sending, set GMAIL_USER and GMAIL_APP_PASSWORD. If a lead only has a contact form, open it and paste the draft manually.</p>
         </section>
 
         <section className="panel stack">

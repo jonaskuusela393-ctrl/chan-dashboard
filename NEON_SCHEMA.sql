@@ -54,6 +54,13 @@ CREATE TABLE IF NOT EXISTS viewport_business_leads (
   address TEXT NOT NULL DEFAULT '',
   phone TEXT NOT NULL DEFAULT '',
   email TEXT NOT NULL DEFAULT '',
+  contact_form_url TEXT NOT NULL DEFAULT '',
+  facebook_url TEXT NOT NULL DEFAULT '',
+  instagram_url TEXT NOT NULL DEFAULT '',
+  contact_status TEXT NOT NULL DEFAULT 'unknown',
+  site_quality TEXT NOT NULL DEFAULT 'unknown',
+  site_notes TEXT NOT NULL DEFAULT '',
+  last_scanned_at TEXT NOT NULL DEFAULT '',
   website TEXT NOT NULL DEFAULT '',
   maps_url TEXT NOT NULL DEFAULT '',
   rating DOUBLE PRECISION,
@@ -73,6 +80,13 @@ CREATE TABLE IF NOT EXISTS viewport_business_leads (
 );
 
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT '';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS contact_form_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS facebook_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS instagram_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS contact_status TEXT NOT NULL DEFAULT 'unknown';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS site_quality TEXT NOT NULL DEFAULT 'unknown';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS site_notes TEXT NOT NULL DEFAULT '';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS last_scanned_at TEXT NOT NULL DEFAULT '';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS offer_price TEXT NOT NULL DEFAULT '300€';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS package_name TEXT NOT NULL DEFAULT 'Starter Website';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS next_follow_up TEXT NOT NULL DEFAULT '';
@@ -82,3 +96,5 @@ CREATE INDEX IF NOT EXISTS viewport_business_leads_status_idx ON viewport_busine
 CREATE INDEX IF NOT EXISTS viewport_business_leads_followup_idx ON viewport_business_leads(next_follow_up);
 CREATE INDEX IF NOT EXISTS viewport_business_leads_score_idx ON viewport_business_leads(score DESC);
 CREATE INDEX IF NOT EXISTS viewport_business_leads_updated_idx ON viewport_business_leads(updated_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_business_leads_contact_status_idx ON viewport_business_leads(contact_status);
+CREATE INDEX IF NOT EXISTS viewport_business_leads_site_quality_idx ON viewport_business_leads(site_quality);
