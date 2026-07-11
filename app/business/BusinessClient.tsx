@@ -1,15 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  MAP_HEIGHT,
-  MAP_WIDTH,
-  WORLD_COAST_PATHS,
-  WORLD_COUNTRY_PATHS,
-  WORLD_LAND_PATHS,
-  WORLD_MAP_COUNTS,
-} from "./worldMapData";
+import { useEffect, useMemo, useState } from "react";
+import BusinessMap from "./BusinessMap";
 
 type LeadStatus =
   | "new"
@@ -42,6 +35,10 @@ type BusinessLead = {
   contactFormUrl: string;
   facebookUrl: string;
   instagramUrl: string;
+  linkedinUrl: string;
+  tiktokUrl: string;
+  whatsappUrl: string;
+  messengerUrl: string;
   contactStatus: string;
   siteQuality: string;
   siteNotes: string;
@@ -72,7 +69,13 @@ type WebsiteCheck = {
   hasViewport?: boolean;
   hasContact?: boolean;
   hasModern?: boolean;
+  hasMetaDescription?: boolean;
+  hasH1?: boolean;
+  hasHttps?: boolean;
+  oldMarkup?: boolean;
   weak?: boolean;
+  issues?: string[];
+  responseMs?: number;
   bytes?: number;
   error?: string;
 };
@@ -85,10 +88,14 @@ type ContactScan = {
   emails?: string[];
   contactForms?: string[];
   contactFormUrl?: string;
+  phones?: string[];
   phoneLinks?: string[];
   facebookUrl?: string;
   instagramUrl?: string;
   linkedinUrl?: string;
+  tiktokUrl?: string;
+  whatsappUrl?: string;
+  messengerUrl?: string;
   contactStatus?: string;
   siteQuality?: string;
   siteNotes?: string;
@@ -99,7 +106,10 @@ type ContactScan = {
     status: number;
     title: string;
     bytes: number;
+    responseMs?: number;
     hasViewport: boolean;
+    hasMetaDescription?: boolean;
+    hasH1?: boolean;
     hasContactWords: boolean;
     hasForm: boolean;
     hasOldMarkup: boolean;
@@ -129,6 +139,10 @@ function safeLead(value: unknown): BusinessLead | null {
     contactFormUrl: text(input.contactFormUrl),
     facebookUrl: text(input.facebookUrl),
     instagramUrl: text(input.instagramUrl),
+    linkedinUrl: text(input.linkedinUrl),
+    tiktokUrl: text(input.tiktokUrl),
+    whatsappUrl: text(input.whatsappUrl),
+    messengerUrl: text(input.messengerUrl),
     contactStatus: text(input.contactStatus) || "unknown",
     siteQuality:
       text(input.siteQuality) ||
@@ -238,6 +252,17 @@ const CITY_PRESETS = [
   "Oulu Finland",
 ];
 
+const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+  "Lohja Finland": { lat: 60.2486, lng: 24.0653 },
+  "Helsinki Finland": { lat: 60.1699, lng: 24.9384 },
+  "Espoo Finland": { lat: 60.2055, lng: 24.6559 },
+  "Vantaa Finland": { lat: 60.2934, lng: 25.0378 },
+  "Turku Finland": { lat: 60.4518, lng: 22.2666 },
+  "Tampere Finland": { lat: 61.4978, lng: 23.7610 },
+  "Lahti Finland": { lat: 60.9827, lng: 25.6615 },
+  "Oulu Finland": { lat: 65.0121, lng: 25.4651 },
+};
+
 const PACKAGES = [
   {
     name: "Starter Website",
@@ -300,29 +325,6 @@ function todayPlus(days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-function project(lng: number, lat: number) {
-  const x = ((lng + 180) / 360) * MAP_WIDTH;
-  const y = ((90 - lat) / 180) * MAP_HEIGHT;
-  return {
-    x: Math.max(0, Math.min(MAP_WIDTH, x)),
-    y: Math.max(0, Math.min(MAP_HEIGHT, y)),
-  };
-}
-
-type MapView = { x: number; y: number; w: number; h: number };
-
-function clampMapView(view: MapView): MapView {
-  const ratio = MAP_HEIGHT / MAP_WIDTH;
-  const w = Math.max(65, Math.min(MAP_WIDTH, view.w));
-  const h = Math.max(65 * ratio, Math.min(MAP_HEIGHT, w * ratio));
-  return {
-    x: Math.max(0, Math.min(MAP_WIDTH - w, view.x)),
-    y: Math.max(0, Math.min(MAP_HEIGHT - h, view.y)),
-    w,
-    h,
-  };
-}
-
 function websiteLabel(lead: BusinessLead) {
   if (!lead.website) return "NO WEBSITE";
   try {
@@ -336,7 +338,13 @@ function leadContact(lead: BusinessLead) {
   if (lead.email) return lead.email;
   if (lead.contactFormUrl) return "contact form";
   if (lead.phone) return lead.phone;
+  if (lead.whatsappUrl) return "WhatsApp";
+  if (lead.facebookUrl || lead.instagramUrl || lead.linkedinUrl || lead.messengerUrl) return "social contact";
   return "no contact saved";
+}
+
+function hasAnyContact(lead: BusinessLead) {
+  return Boolean(lead.email || lead.contactFormUrl || lead.phone || lead.whatsappUrl || lead.facebookUrl || lead.instagramUrl || lead.linkedinUrl || lead.messengerUrl);
 }
 
 function siteLabel(lead: BusinessLead) {
@@ -351,6 +359,8 @@ function contactBadge(lead: BusinessLead) {
   if (lead.email) return "email";
   if (lead.contactFormUrl) return "form";
   if (lead.phone) return "phone";
+  if (lead.whatsappUrl) return "whatsapp";
+  if (lead.facebookUrl || lead.instagramUrl || lead.linkedinUrl || lead.messengerUrl) return "social";
   return "no contact";
 }
 
@@ -483,321 +493,9 @@ function demoHtml(lead: BusinessLead | null, price: string) {
   </header>
   <section><h2>Services</h2><div class="grid"><div class="card">Main work</div><div class="card">Small jobs</div><div class="card">Quotes</div></div></section>
   <section><h2>Work photos</h2><div class="grid"><div class="photo"></div><div class="photo"></div><div class="photo"></div></div></section>
-  <section id="contact"><h2>Contact</h2><p>Example package price for building this: ${price}.</p><p>${lead?.phone || "Phone here"} · ${lead?.email || "email@example.com"}</p></section>
+  <section id="contact"><h2>Contact</h2><p>Example package price for building this: ${price}.</p><p>${lead?.phone || "Phone here"} · ${lead?.email || "email@example.com"}</p><p>${lead?.email ? `<a class="btn" href="mailto:${lead.email}?subject=Quote request for ${name}">Email us</a>` : ""}${lead?.phone ? `<a class="btn" href="tel:${lead.phone.replace(/[^+\d]/g, "")}">Call us</a>` : ""}</p></section>
 </body>
 </html>`;
-}
-
-function TerminalWorldMap({
-  leads,
-  selected,
-  onSelect,
-}: {
-  leads: BusinessLead[];
-  selected: BusinessLead | null;
-  onSelect: (lead: BusinessLead) => void;
-}) {
-  const topLeads = leads.slice(0, 400);
-  const svgRef = useRef<SVGSVGElement | null>(null);
-  const dragRef = useRef<{
-    clientX: number;
-    clientY: number;
-    view: MapView;
-    moved: boolean;
-  } | null>(null);
-  const [view, setView] = useState<MapView>({
-    x: 0,
-    y: 0,
-    w: MAP_WIDTH,
-    h: MAP_HEIGHT,
-  });
-
-  function zoomAt(clientX: number, clientY: number, scale: number) {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const px = ((clientX - rect.left) / rect.width) * view.w + view.x;
-    const py = ((clientY - rect.top) / rect.height) * view.h + view.y;
-    const nextW = view.w * scale;
-    const nextH = view.h * scale;
-    setView(
-      clampMapView({
-        x: px - (px - view.x) * scale,
-        y: py - (py - view.y) * scale,
-        w: nextW,
-        h: nextH,
-      }),
-    );
-  }
-
-  function zoomCenter(scale: number) {
-    const cx = view.x + view.w / 2;
-    const cy = view.y + view.h / 2;
-    const nextW = view.w * scale;
-    const nextH = view.h * scale;
-    setView(
-      clampMapView({
-        x: cx - nextW / 2,
-        y: cy - nextH / 2,
-        w: nextW,
-        h: nextH,
-      }),
-    );
-  }
-
-  function focusLead(lead: BusinessLead) {
-    const p = project(lead.lng, lead.lat);
-    const nextW = 170;
-    const nextH = nextW * (MAP_HEIGHT / MAP_WIDTH);
-    setView(
-      clampMapView({
-        x: p.x - nextW / 2,
-        y: p.y - nextH / 2,
-        w: nextW,
-        h: nextH,
-      }),
-    );
-    onSelect(lead);
-  }
-
-  function focusFinland() {
-    const p = project(24.94, 61.92);
-    const nextW = 115;
-    const nextH = nextW * (MAP_HEIGHT / MAP_WIDTH);
-    setView(
-      clampMapView({
-        x: p.x - nextW / 2,
-        y: p.y - nextH / 2,
-        w: nextW,
-        h: nextH,
-      }),
-    );
-  }
-
-  return (
-    <div className="terminal-map panel stack">
-      <div className="spread map-head">
-        <div>
-          <p className="badge">WORLD CLIENT RADAR</p>
-          <h2>Zoomable world map</h2>
-          <p className="muted small">
-            real country borders · wheel zoom · drag pan · buttons work on phone
-          </p>
-        </div>
-        <div className="map-controls row">
-          <button type="button" onClick={() => zoomCenter(0.62)}>
-            +
-          </button>
-          <button type="button" onClick={() => zoomCenter(1.45)}>
-            -
-          </button>
-          <button type="button" onClick={focusFinland}>
-            Finland
-          </button>
-          <button
-            type="button"
-            onClick={() => setView({ x: 0, y: 0, w: MAP_WIDTH, h: MAP_HEIGHT })}
-          >
-            world
-          </button>
-        </div>
-      </div>
-
-      <svg
-        ref={svgRef}
-        className="world-svg real-world-svg"
-        viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
-        role="img"
-        aria-label="Zoomable world map with country borders and lead pins"
-        onWheel={(event) => {
-          event.preventDefault();
-          zoomAt(event.clientX, event.clientY, event.deltaY > 0 ? 1.18 : 0.82);
-        }}
-        onDoubleClick={(event) => zoomAt(event.clientX, event.clientY, 0.55)}
-        onPointerDown={(event) => {
-          if (event.button !== 0) return;
-          dragRef.current = {
-            clientX: event.clientX,
-            clientY: event.clientY,
-            view,
-            moved: false,
-          };
-          event.currentTarget.setPointerCapture(event.pointerId);
-        }}
-        onPointerMove={(event) => {
-          const drag = dragRef.current;
-          const svg = svgRef.current;
-          if (!drag || !svg) return;
-          const rect = svg.getBoundingClientRect();
-          const dx =
-            ((event.clientX - drag.clientX) / rect.width) * drag.view.w;
-          const dy =
-            ((event.clientY - drag.clientY) / rect.height) * drag.view.h;
-          if (Math.abs(dx) + Math.abs(dy) > 1.5) drag.moved = true;
-          setView(
-            clampMapView({
-              ...drag.view,
-              x: drag.view.x - dx,
-              y: drag.view.y - dy,
-            }),
-          );
-        }}
-        onPointerUp={(event) => {
-          dragRef.current = null;
-          try {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-          } catch {}
-        }}
-      >
-        <defs>
-          <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="1.1" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <pattern
-            id="scanGrid"
-            width="25"
-            height="25"
-            patternUnits="userSpaceOnUse"
-          >
-            <path d="M 25 0 L 0 0 0 25" className="map-grid" />
-          </pattern>
-        </defs>
-        <rect
-          x="0"
-          y="0"
-          width={MAP_WIDTH}
-          height={MAP_HEIGHT}
-          className="map-bg"
-        />
-        <rect
-          x="0"
-          y="0"
-          width={MAP_WIDTH}
-          height={MAP_HEIGHT}
-          fill="url(#scanGrid)"
-          opacity="0.62"
-        />
-        <g className="map-graticule" aria-hidden="true">
-          {[-120, -60, 0, 60, 120].map((lon) => {
-            const x = project(lon, 0).x;
-            return (
-              <line key={`lon-${lon}`} x1={x} y1={0} x2={x} y2={MAP_HEIGHT} />
-            );
-          })}
-          {[-60, -30, 0, 30, 60].map((latLine) => {
-            const y = project(0, latLine).y;
-            return (
-              <line
-                key={`lat-${latLine}`}
-                x1={0}
-                y1={y}
-                x2={MAP_WIDTH}
-                y2={y}
-              />
-            );
-          })}
-        </g>
-        <g className="map-land" filter="url(#softGlow)" aria-hidden="true">
-          {WORLD_LAND_PATHS.map((d, index) => (
-            <path key={`land-${index}`} d={d} />
-          ))}
-        </g>
-        <g className="map-coast" aria-hidden="true">
-          {WORLD_COAST_PATHS.map((d, index) => (
-            <path key={`coast-${index}`} d={d} />
-          ))}
-        </g>
-        <g className="map-countries" aria-hidden="true">
-          {WORLD_COUNTRY_PATHS.map((d, index) => (
-            <path key={`country-${index}`} d={d} />
-          ))}
-        </g>
-        <g className="city-layer" aria-hidden="true">
-          <circle
-            cx={project(24.94, 60.17).x}
-            cy={project(24.94, 60.17).y}
-            r="1.6"
-          />
-          <text x={project(24.94, 60.17).x + 4} y={project(24.94, 60.17).y - 3}>
-            HELSINKI
-          </text>
-          <circle
-            cx={project(24.07, 60.25).x}
-            cy={project(24.07, 60.25).y}
-            r="1.6"
-          />
-          <text
-            x={project(24.07, 60.25).x - 30}
-            y={project(24.07, 60.25).y - 3}
-          >
-            LOHJA
-          </text>
-          <circle
-            cx={project(25.75, 61.5).x}
-            cy={project(25.75, 61.5).y}
-            r="1.4"
-          />
-          <text x={project(25.75, 61.5).x + 4} y={project(25.75, 61.5).y - 3}>
-            FINLAND
-          </text>
-        </g>
-        <g className="pin-layer">
-          {topLeads.map((lead) => {
-            const p = project(lead.lng, lead.lat);
-            const selectedDot = selected?.id === lead.id;
-            const high = lead.score >= 70 || !lead.website;
-            return (
-              <g
-                key={lead.id}
-                onClick={() => focusLead(lead)}
-                className="map-pin"
-                tabIndex={0}
-                role="button"
-                aria-label={lead.name}
-              >
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r={selectedDot ? 5.5 : high ? 3.8 : 3}
-                  className={
-                    selectedDot ? "pin selected" : high ? "pin hot" : "pin"
-                  }
-                />
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r={selectedDot ? 10 : high ? 7 : 5.5}
-                  className="pin-ring"
-                />
-                {selectedDot && (
-                  <text
-                    x={Math.min(p.x + 7, MAP_WIDTH - 110)}
-                    y={Math.max(p.y - 7, 12)}
-                  >
-                    {lead.name.slice(0, 28)}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </g>
-      </svg>
-      <div className="spread map-foot">
-        <p className="muted small">
-          Loaded {WORLD_MAP_COUNTS.countries} country-border segments,{" "}
-          {WORLD_MAP_COUNTS.coast} coast segments, {WORLD_MAP_COUNTS.land} land
-          polygons.
-        </p>
-        <p className="muted small">
-          Zoom: {Math.round(MAP_WIDTH / view.w)}x · pins: {topLeads.length}
-        </p>
-      </div>
-    </div>
-  );
 }
 
 export default function BusinessClient({ username }: { username: string }) {
@@ -807,6 +505,11 @@ export default function BusinessClient({ username }: { username: string }) {
   const [lat, setLat] = useState("60.25");
   const [lng, setLng] = useState("24.07");
   const [radius, setRadius] = useState("15000");
+  const [deepSearch, setDeepSearch] = useState(true);
+  const [searchPages, setSearchPages] = useState("3");
+  const [searchVariants, setSearchVariants] = useState("5");
+  const [restrictArea, setRestrictArea] = useState(true);
+  const [persistBulkScans, setPersistBulkScans] = useState(false);
   const [leadFilter, setLeadFilter] = useState<LeadFilter>("opportunity");
   const [minScore, setMinScore] = useState("0");
   const [results, setResults] = useState<BusinessLead[]>([]);
@@ -836,7 +539,7 @@ export default function BusinessClient({ username }: { username: string }) {
         if (leadFilter === "no_site") return !lead.website;
         if (leadFilter === "upgrade_site") return leadHasUpgradePotential(lead);
         if (leadFilter === "has_contact")
-          return Boolean(lead.email || lead.contactFormUrl || lead.phone);
+          return hasAnyContact(lead);
         if (leadFilter === "opportunity")
           return (
             !lead.website || leadHasUpgradePotential(lead) || lead.score >= 55
@@ -849,11 +552,13 @@ export default function BusinessClient({ username }: { username: string }) {
 
   const allMapLeads = useMemo(() => {
     const map = new Map<string, BusinessLead>();
-    [...results, ...saved].forEach((lead) => {
+    const source = results.length ? filteredResults : saved;
+    source.forEach((lead) => {
       if (lead?.id) map.set(lead.id, lead);
     });
-    return Array.from(map.values()).filter((lead) => lead.lat || lead.lng);
-  }, [results, saved]);
+    if (selected?.id) map.set(selected.id, selected);
+    return Array.from(map.values()).filter((lead) => Number.isFinite(lead.lat) && Number.isFinite(lead.lng) && (lead.lat !== 0 || lead.lng !== 0));
+  }, [results.length, filteredResults, saved, selected]);
 
   const stats = useMemo(() => {
     const savedCount = saved.length;
@@ -915,13 +620,38 @@ export default function BusinessClient({ username }: { username: string }) {
     return leads;
   }
 
+  function applyCityPreset(city: string) {
+    setLocation(city);
+    const point = CITY_COORDS[city];
+    if (point) {
+      setLat(point.lat.toFixed(6));
+      setLng(point.lng.toFixed(6));
+    }
+  }
+
+  async function locateArea() {
+    setLoading(true);
+    setStatus(`locating ${location}...`);
+    try {
+      const response = await fetch(`/api/business/geocode?address=${encodeURIComponent(location)}`, { cache: "no-store" });
+      const data = await readJson(response);
+      if (!response.ok) throw new Error(String(data.error || "location lookup failed"));
+      setLat(Number(data.lat).toFixed(6));
+      setLng(Number(data.lng).toFixed(6));
+      if (data.address) setLocation(String(data.address));
+      setStatus(`area located: ${Number(data.lat).toFixed(5)}, ${Number(data.lng).toFixed(5)}`);
+    } catch (error) {
+      setStatus(err(error, "location lookup failed; search can still use the written area name"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function search(demo = false) {
     setLoading(true);
     setWebsiteCheck(null);
     setContactScan(null);
-    setStatus(
-      demo ? "loading demo radar..." : "searching Google Places/local radar...",
-    );
+    setStatus(demo ? "loading demo radar..." : deepSearch ? "running broad paginated Google Places search..." : "searching Google Places...");
     try {
       const params = new URLSearchParams({
         q: query,
@@ -929,21 +659,22 @@ export default function BusinessClient({ username }: { username: string }) {
         lat,
         lng,
         radius,
+        deep: deepSearch ? "1" : "0",
+        pages: searchPages,
+        variants: searchVariants,
+        restrict: restrictArea ? "1" : "0",
       });
       if (demo) params.set("demo", "1");
-      const response = await fetch(
-        `/api/business/search?${params.toString()}`,
-        { cache: "no-store" },
-      );
+      const response = await fetch(`/api/business/search?${params.toString()}`, { cache: "no-store" });
       const data = await readJson(response);
-      if (!response.ok)
-        throw new Error(String(data.error || "business search failed"));
+      if (!response.ok) throw new Error(String(data.error || "business search failed"));
       const leads = safeLeads(data.leads);
       setResults(leads);
       setSelected(leads[0] || null);
-      setStatus(
-        `${leads.length} targets loaded${data.demo ? " · demo mode until GOOGLE_MAPS_API_KEY is set" : ""}`,
-      );
+      const details = data.demo
+        ? "demo mode until GOOGLE_MAPS_API_KEY is set"
+        : `${Number(data.apiRequests || 0)} Places requests · ${Array.isArray(data.queries) ? data.queries.length : 1} search variants`;
+      setStatus(`${leads.length} unique targets loaded · ${details}${Array.isArray(data.partialErrors) && data.partialErrors.length ? ` · ${data.partialErrors.length} partial errors` : ""}`);
     } catch (error) {
       setStatus(err(error, "business search failed"));
     } finally {
@@ -1039,84 +770,123 @@ export default function BusinessClient({ username }: { username: string }) {
     }
   }
 
+  function patchFromContactScan(lead: BusinessLead, data: ContactScan): Partial<BusinessLead> {
+    return {
+      email: data.emails?.[0] || lead.email || "",
+      phone: lead.phone || data.phones?.[0] || "",
+      contactFormUrl: data.contactFormUrl || data.contactForms?.[0] || lead.contactFormUrl || "",
+      facebookUrl: data.facebookUrl || lead.facebookUrl || "",
+      instagramUrl: data.instagramUrl || lead.instagramUrl || "",
+      linkedinUrl: data.linkedinUrl || lead.linkedinUrl || "",
+      tiktokUrl: data.tiktokUrl || lead.tiktokUrl || "",
+      whatsappUrl: data.whatsappUrl || lead.whatsappUrl || "",
+      messengerUrl: data.messengerUrl || lead.messengerUrl || "",
+      contactStatus: data.contactStatus || lead.contactStatus || "website",
+      siteQuality: data.siteQuality || lead.siteQuality || "unchecked",
+      siteNotes: data.siteNotes || lead.siteNotes || "",
+      lastScannedAt: data.scannedAt || new Date().toISOString(),
+      score: Math.max(lead.score || 0, Number(data.upgradeScore || 0)),
+    };
+  }
+
+  async function persistLeadQuiet(lead: BusinessLead) {
+    const response = await fetch("/api/business/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...lead, status: lead.status === "new" ? "saved" : lead.status }),
+    });
+    if (!response.ok) {
+      const data = await readJson(response);
+      throw new Error(String(data.error || `could not save ${lead.name}`));
+    }
+  }
+
   async function scanContact(lead: BusinessLead, persist = isSavedLead(lead)) {
     if (!lead.website) {
       const next = {
         ...lead,
         siteQuality: "no_site",
-        contactStatus: lead.phone ? "phone" : "unknown",
-        siteNotes:
-          "No website found from Google Places. Phone or manual search is the main contact path.",
+        contactStatus: lead.phone ? "phone" : (lead.facebookUrl || lead.instagramUrl ? "social" : "unknown"),
+        siteNotes: "No website was returned by Google Places. Use phone, Maps, or a social profile when available.",
       };
       mergeLeadLocal(next);
-      setContactScan({
-        ok: false,
-        error:
-          "No website to scan. This is still a good web-design lead, but email finder needs a site.",
-      });
+      setContactScan({ ok: false, error: "No website exists to crawl. The saved phone, Google Maps page, and social profiles are the available contact paths." });
       setStatus("no website to scan");
       return;
     }
 
-    setStatus(`finding email/contact form for ${lead.name}...`);
+    setStatus(`deep contact scan: ${lead.name}...`);
     setContactScan(null);
     try {
-      const response = await fetch(
-        `/api/business/contact-scan?url=${encodeURIComponent(lead.website)}`,
-        { cache: "no-store" },
-      );
+      const response = await fetch(`/api/business/contact-scan?url=${encodeURIComponent(lead.website)}`, { cache: "no-store" });
       const data = (await readJson(response)) as ContactScan;
       setContactScan(data);
-      if (!response.ok || !data.ok)
-        throw new Error(String(data.error || "contact scan failed"));
-
-      const patch: Partial<BusinessLead> = {
-        email: data.emails?.[0] || lead.email || "",
-        contactFormUrl:
-          data.contactFormUrl ||
-          data.contactForms?.[0] ||
-          lead.contactFormUrl ||
-          "",
-        facebookUrl: data.facebookUrl || lead.facebookUrl || "",
-        instagramUrl: data.instagramUrl || lead.instagramUrl || "",
-        contactStatus: data.contactStatus || lead.contactStatus || "website",
-        siteQuality: data.siteQuality || lead.siteQuality || "unchecked",
-        siteNotes: data.siteNotes || lead.siteNotes || "",
-        lastScannedAt: data.scannedAt || new Date().toISOString(),
-        score: Math.max(lead.score || 0, Number(data.upgradeScore || 0)),
-      };
+      if (!response.ok || !data.ok) throw new Error(String(data.error || "contact scan failed"));
+      const patch = patchFromContactScan(lead, data);
       const next = { ...lead, ...patch } as BusinessLead;
       mergeLeadLocal(next);
-      setStatus(
-        `${lead.name}: ${patch.email ? "email found" : patch.contactFormUrl ? "contact form found" : patch.contactStatus || "scan done"} · site ${patch.siteQuality || "checked"}`,
-      );
+      setStatus(`${lead.name}: ${patch.email ? "email found" : patch.contactFormUrl ? "contact page/form found" : patch.whatsappUrl ? "WhatsApp found" : patch.phone ? "phone found" : patch.contactStatus || "scan complete"} · ${data.pagesScanned?.length || 0} pages checked`);
       if (persist) {
-        if (isSavedLead(lead)) await updateLead(lead, patch);
-        else await saveLead(next, "saved");
+        await persistLeadQuiet({ ...next, status: next.status === "new" ? "saved" : next.status });
+        await loadSaved();
       }
     } catch (error) {
-      setContactScan(
-        (old) => old || { ok: false, error: err(error, "contact scan failed") },
-      );
+      setContactScan((old) => old || { ok: false, error: err(error, "contact scan failed") });
       setStatus(err(error, "contact scan failed"));
     }
   }
 
   async function scanVisibleWebsites() {
-    const targets = filteredResults.filter((lead) => lead.website).slice(0, 10);
+    const targets = filteredResults.filter((lead) => lead.website);
     if (!targets.length) {
       setStatus("no visible website leads to scan");
       return;
     }
     setLoading(true);
+    let completed = 0;
+    let failed = 0;
+    let contactsFound = 0;
+    const updates = new Map<string, BusinessLead>();
     try {
-      for (let i = 0; i < targets.length; i += 1) {
-        setStatus(`scanning ${i + 1}/${targets.length}: ${targets[i].name}`);
-        await scanContact(targets[i], false);
+      for (let offset = 0; offset < targets.length; offset += 4) {
+        const batch = targets.slice(offset, offset + 4);
+        setStatus(`deep scanning ${completed}/${targets.length} websites...`);
+        const response = await fetch("/api/business/contact-scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: batch.map((lead) => ({ id: lead.id, url: lead.website })) }),
+        });
+        const payload = await readJson(response);
+        if (!response.ok) throw new Error(String(payload.error || "bulk scan failed"));
+        const scanResults = Array.isArray(payload.results) ? payload.results as Array<ContactScan & { id?: string }> : [];
+        const batchUpdates: BusinessLead[] = [];
+        for (const scan of scanResults) {
+          const lead = batch.find((item) => item.id === scan.id);
+          if (!lead) continue;
+          completed += 1;
+          if (!scan.ok) {
+            failed += 1;
+            continue;
+          }
+          const next = { ...lead, ...patchFromContactScan(lead, scan) } as BusinessLead;
+          updates.set(next.id, next);
+          batchUpdates.push(next);
+          if (hasAnyContact(next)) contactsFound += 1;
+        }
+        setResults((old) => old.map((lead) => updates.get(lead.id) || lead));
+        setSaved((old) => old.map((lead) => updates.get(lead.id) || lead));
+        setSelected((old) => old ? updates.get(old.id) || old : old);
+        if (persistBulkScans) {
+          await Promise.all(batchUpdates.map((lead) => persistLeadQuiet({ ...lead, status: lead.status === "new" ? "saved" : lead.status })));
+        } else {
+          const savedIds = new Set(saved.map((lead) => lead.id));
+          await Promise.all(batchUpdates.filter((lead) => savedIds.has(lead.id)).map(persistLeadQuiet));
+        }
       }
-      setStatus(
-        `scanned ${targets.length} website leads · switch filter to upgradeable sites/contact found`,
-      );
+      if (persistBulkScans || saved.length) await loadSaved();
+      setStatus(`scan complete: ${completed}/${targets.length} websites · ${contactsFound} with contact paths · ${failed} failed`);
+    } catch (error) {
+      setStatus(`${err(error, "bulk scan failed")} · completed ${completed}/${targets.length}`);
     } finally {
       setLoading(false);
     }
@@ -1137,6 +907,10 @@ export default function BusinessClient({ username }: { username: string }) {
       contactFormUrl: "",
       facebookUrl: "",
       instagramUrl: "",
+      linkedinUrl: "",
+      tiktokUrl: "",
+      whatsappUrl: "",
+      messengerUrl: "",
       contactStatus: manualEmail
         ? "email"
         : manualPhone
@@ -1166,6 +940,43 @@ export default function BusinessClient({ username }: { username: string }) {
     };
     await saveLead(lead, "saved");
     setManualName("");
+  }
+
+  async function exportClientSite() {
+    const lead = current;
+    if (!lead) {
+      setStatus("select a business before exporting a site");
+      return;
+    }
+    setLoading(true);
+    setStatus(`building deployable site for ${lead.name}...`);
+    try {
+      const response = await fetch("/api/business/site-export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: lead.name, category: lead.category, city: lead.address, phone: lead.phone, email: lead.email, mapsUrl: lead.mapsUrl }),
+      });
+      if (!response.ok) {
+        const data = await readJson(response);
+        throw new Error(String(data.error || "site export failed"));
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") || "";
+      const filename = disposition.match(/filename="([^"]+)"/i)?.[1] || `${lead.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "business-site"}.zip`;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setStatus(`exported ${filename} · add RESEND_API_KEY and CONTACT_TO_EMAIL on the client's Vercel project`);
+    } catch (error) {
+      setStatus(err(error, "site export failed"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   function copy(text: string, label = "copied") {
@@ -1226,18 +1037,28 @@ export default function BusinessClient({ username }: { username: string }) {
       {tab === "radar" && (
         <>
           <div className="business-layout">
-            <section className="panel stack">
-              <h2>Lead finder</h2>
+            <section className="panel stack lead-finder-panel">
+              <div className="spread">
+                <div>
+                  <h2>Lead finder</h2>
+                  <p className="muted small">
+                    Broad mode searches multiple wording variants and every available Places page.
+                  </p>
+                </div>
+                <span className={deepSearch ? "badge" : "badge warn"}>
+                  {deepSearch ? "BROAD" : "QUICK"}
+                </span>
+              </div>
               <label className="stack small">
                 Niche / keyword
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="painter, cleaner, barber..."
+                  placeholder="painter, cleaner, electrician..."
                 />
               </label>
-              <div className="chip-row">
-                {NICHE_PRESETS.slice(0, 12).map((niche) => (
+              <div className="chip-row compact-chips">
+                {NICHE_PRESETS.slice(0, 14).map((niche) => (
                   <button key={niche} onClick={() => setQuery(niche)}>
                     {niche}
                   </button>
@@ -1245,57 +1066,74 @@ export default function BusinessClient({ username }: { username: string }) {
               </div>
               <label className="stack small">
                 Area
-                <input
-                  value={location}
-                  onChange={(event) => setLocation(event.target.value)}
-                  placeholder="Lohja Finland"
-                />
+                <div className="field-with-button">
+                  <input
+                    value={location}
+                    onChange={(event) => setLocation(event.target.value)}
+                    placeholder="Lohja Finland"
+                  />
+                  <button onClick={() => void locateArea()} disabled={loading}>
+                    locate
+                  </button>
+                </div>
               </label>
-              <div className="chip-row">
-                {CITY_PRESETS.slice(0, 6).map((city) => (
-                  <button key={city} onClick={() => setLocation(city)}>
+              <div className="chip-row compact-chips">
+                {CITY_PRESETS.slice(0, 10).map((city) => (
+                  <button key={city} onClick={() => applyCityPreset(city)}>
                     {city.replace(" Finland", "")}
                   </button>
                 ))}
               </div>
-              <div className="grid tight-grid">
-                <label className="stack small">
-                  Latitude
-                  <input
-                    value={lat}
-                    onChange={(event) => setLat(event.target.value)}
-                  />
+              <details className="advanced-search" open>
+                <summary>Search coverage and map area</summary>
+                <div className="grid tight-grid advanced-search-grid">
+                  <label className="stack small">
+                    Latitude
+                    <input value={lat} onChange={(event) => setLat(event.target.value)} />
+                  </label>
+                  <label className="stack small">
+                    Longitude
+                    <input value={lng} onChange={(event) => setLng(event.target.value)} />
+                  </label>
+                  <label className="stack small">
+                    Radius meters
+                    <input value={radius} onChange={(event) => setRadius(event.target.value)} />
+                  </label>
+                  <label className="stack small">
+                    Places pages / query
+                    <select value={searchPages} onChange={(event) => setSearchPages(event.target.value)}>
+                      <option value="1">1 · fastest</option>
+                      <option value="2">2</option>
+                      <option value="3">3 · broadest</option>
+                    </select>
+                  </label>
+                  <label className="stack small">
+                    Search variants
+                    <select value={searchVariants} onChange={(event) => setSearchVariants(event.target.value)}>
+                      {[1, 2, 3, 4, 5, 6].map((value) => <option key={value} value={value}>{value}</option>)}
+                    </select>
+                  </label>
+                  <label className="stack small">
+                    Min score
+                    <input value={minScore} onChange={(event) => setMinScore(event.target.value)} />
+                  </label>
+                </div>
+                <label className="checkline">
+                  <input type="checkbox" checked={deepSearch} onChange={(event) => setDeepSearch(event.target.checked)} />
+                  Search multiple keyword variants and service-area businesses
                 </label>
-                <label className="stack small">
-                  Longitude
-                  <input
-                    value={lng}
-                    onChange={(event) => setLng(event.target.value)}
-                  />
+                <label className="checkline">
+                  <input type="checkbox" checked={restrictArea} onChange={(event) => setRestrictArea(event.target.checked)} />
+                  Keep results inside the selected radius instead of only biasing toward it
                 </label>
-                <label className="stack small">
-                  Radius meters
-                  <input
-                    value={radius}
-                    onChange={(event) => setRadius(event.target.value)}
-                  />
+                <label className="checkline">
+                  <input type="checkbox" checked={persistBulkScans} onChange={(event) => setPersistBulkScans(event.target.checked)} />
+                  Save every scanned result to Neon automatically
                 </label>
-                <label className="stack small">
-                  Min score
-                  <input
-                    value={minScore}
-                    onChange={(event) => setMinScore(event.target.value)}
-                  />
-                </label>
-              </div>
+              </details>
               <label className="stack small">
                 Lead filter
-                <select
-                  value={leadFilter}
-                  onChange={(event) =>
-                    setLeadFilter(event.target.value as LeadFilter)
-                  }
-                >
+                <select value={leadFilter} onChange={(event) => setLeadFilter(event.target.value as LeadFilter)}>
                   <option value="opportunity">best opportunities</option>
                   <option value="no_site">no website</option>
                   <option value="upgrade_site">has site but upgradeable</option>
@@ -1303,32 +1141,35 @@ export default function BusinessClient({ username }: { username: string }) {
                   <option value="all">all results</option>
                 </select>
               </label>
-              <div className="row">
+              <div className="row wrap-actions">
                 <button onClick={() => void search(false)} disabled={loading}>
-                  search live
+                  {deepSearch ? "broad live search" : "quick live search"}
                 </button>
-                <button onClick={() => void search(true)} disabled={loading}>
-                  demo map
-                </button>
+                <button onClick={() => void search(true)} disabled={loading}>demo results</button>
                 <button
                   onClick={() => void scanVisibleWebsites()}
-                  disabled={
-                    loading || !filteredResults.some((lead) => lead.website)
-                  }
+                  disabled={loading || !filteredResults.some((lead) => lead.website)}
                 >
-                  scan visible sites
+                  scan all loaded sites ({filteredResults.filter((lead) => lead.website).length})
                 </button>
               </div>
               <p className="muted small">
-                Live search needs GOOGLE_MAPS_API_KEY. Use “scan visible sites”
-                to find emails/contact forms and identify weak sites worth
-                upgrading.
+                Live search needs GOOGLE_MAPS_API_KEY. Maximum configured coverage is {Number(searchPages) * Number(searchVariants)} Places requests before contact crawling. Results are deduplicated.
               </p>
             </section>
-            <TerminalWorldMap
+            <BusinessMap
               leads={allMapLeads}
               selected={current}
-              onSelect={setSelected}
+              searchCenter={{ lat: Number(lat) || 60.25, lng: Number(lng) || 24.07 }}
+              searchLabel={location}
+              onSelect={(mapLead) => {
+                const lead = allMapLeads.find((item) => item.id === mapLead.id);
+                if (lead) setSelected(lead);
+              }}
+              onUseCenter={(point) => {
+                setLat(point.lat.toFixed(6));
+                setLng(point.lng.toFixed(6));
+              }}
             />
           </div>
 
@@ -1461,15 +1302,26 @@ export default function BusinessClient({ username }: { username: string }) {
                         facebook
                       </a>
                     )}
+                    {current.email && (
+                      <a className="buttonlike" href={`mailto:${current.email}`}>email</a>
+                    )}
+                    {current.phone && (
+                      <a className="buttonlike" href={`tel:${current.phone.replace(/[^+\d]/g, "")}`}>call</a>
+                    )}
                     {current.instagramUrl && (
-                      <a
-                        className="buttonlike"
-                        href={current.instagramUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        instagram
-                      </a>
+                      <a className="buttonlike" href={current.instagramUrl} target="_blank" rel="noreferrer">instagram</a>
+                    )}
+                    {current.linkedinUrl && (
+                      <a className="buttonlike" href={current.linkedinUrl} target="_blank" rel="noreferrer">linkedin</a>
+                    )}
+                    {current.whatsappUrl && (
+                      <a className="buttonlike" href={current.whatsappUrl} target="_blank" rel="noreferrer">whatsapp</a>
+                    )}
+                    {current.messengerUrl && (
+                      <a className="buttonlike" href={current.messengerUrl} target="_blank" rel="noreferrer">messenger</a>
+                    )}
+                    {current.tiktokUrl && (
+                      <a className="buttonlike" href={current.tiktokUrl} target="_blank" rel="noreferrer">tiktok</a>
                     )}
                     <button onClick={() => void saveLead(current, "saved")}>
                       save
@@ -1493,9 +1345,53 @@ export default function BusinessClient({ username }: { username: string }) {
                     </button>
                   </div>
                   {(websiteCheck || contactScan) && (
-                    <pre>
-                      {JSON.stringify({ websiteCheck, contactScan }, null, 2)}
-                    </pre>
+                    <div className="scan-summary stack">
+                      {websiteCheck && (
+                        <div className="scan-card stack">
+                          <div className="spread">
+                            <strong>Website check</strong>
+                            <span className={websiteCheck.error || websiteCheck.weak ? "badge warn" : "badge"}>
+                              {websiteCheck.error ? "FAILED" : websiteCheck.weak ? "UPGRADE LEAD" : "BASIC CHECKS OK"}
+                            </span>
+                          </div>
+                          {websiteCheck.error ? (
+                            <p className="muted small">{websiteCheck.error}</p>
+                          ) : (
+                            <>
+                              <p className="muted small">{websiteCheck.title || websiteCheck.url} · {websiteCheck.status} · {websiteCheck.responseMs ?? "?"} ms</p>
+                              {!!websiteCheck.issues?.length && (
+                                <div className="chip-row">{websiteCheck.issues.map((issue) => <span className="badge warn" key={issue}>{issue}</span>)}</div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                      {contactScan && (
+                        <div className="scan-card stack">
+                          <div className="spread">
+                            <strong>Deep contact scan</strong>
+                            <span className={contactScan.ok ? "badge" : "badge warn"}>
+                              {contactScan.ok ? `${contactScan.pagesScanned?.length || 0} PAGES` : "FAILED"}
+                            </span>
+                          </div>
+                          {contactScan.error && <p className="muted small">{contactScan.error}</p>}
+                          {!!contactScan.emails?.length && (
+                            <div><span className="dim small">emails</span><div className="chip-row">{contactScan.emails.map((email) => <a className="buttonlike" href={`mailto:${email}`} key={email}>{email}</a>)}</div></div>
+                          )}
+                          {!!contactScan.contactForms?.length && (
+                            <div><span className="dim small">forms / contact pages</span><div className="chip-row">{contactScan.contactForms.slice(0, 8).map((url) => <a className="buttonlike" href={url} target="_blank" rel="noreferrer" key={url}>open contact</a>)}</div></div>
+                          )}
+                          {!!contactScan.phones?.length && (
+                            <div><span className="dim small">phones</span><div className="chip-row">{contactScan.phones.map((phone) => <a className="buttonlike" href={`tel:${phone.replace(/[^+\d]/g, "")}`} key={phone}>{phone}</a>)}</div></div>
+                          )}
+                          <p className="muted small">{contactScan.siteNotes || "No extra scan notes."}</p>
+                        </div>
+                      )}
+                      <details>
+                        <summary>raw scan details</summary>
+                        <pre>{JSON.stringify({ websiteCheck, contactScan }, null, 2)}</pre>
+                      </details>
+                    </div>
                   )}
                   {current.siteNotes && (
                     <p className="muted small">
@@ -1554,6 +1450,38 @@ export default function BusinessClient({ username }: { username: string }) {
                             phone: event.target.value,
                           })
                         }
+                      />
+                    </label>
+                    <label className="stack small">
+                      Facebook
+                      <input
+                        value={current.facebookUrl || ""}
+                        onChange={(event) => setSelected({ ...current, facebookUrl: event.target.value })}
+                        onBlur={(event) => void commitLead(current, { facebookUrl: event.target.value })}
+                      />
+                    </label>
+                    <label className="stack small">
+                      Instagram
+                      <input
+                        value={current.instagramUrl || ""}
+                        onChange={(event) => setSelected({ ...current, instagramUrl: event.target.value })}
+                        onBlur={(event) => void commitLead(current, { instagramUrl: event.target.value })}
+                      />
+                    </label>
+                    <label className="stack small">
+                      LinkedIn
+                      <input
+                        value={current.linkedinUrl || ""}
+                        onChange={(event) => setSelected({ ...current, linkedinUrl: event.target.value })}
+                        onBlur={(event) => void commitLead(current, { linkedinUrl: event.target.value })}
+                      />
+                    </label>
+                    <label className="stack small">
+                      WhatsApp
+                      <input
+                        value={current.whatsappUrl || ""}
+                        onChange={(event) => setSelected({ ...current, whatsappUrl: event.target.value })}
+                        onBlur={(event) => void commitLead(current, { whatsappUrl: event.target.value })}
                       />
                     </label>
                     <label className="stack small">
@@ -1779,35 +1707,40 @@ export default function BusinessClient({ username }: { username: string }) {
         <section className="panel stack">
           <div className="spread">
             <div>
-              <h2>Demo page generator</h2>
+              <h2>Client website generator</h2>
               <p className="muted small">
-                Creates a complete one-file HTML mockup you can show/send.
+                Export a separate Vercel-ready Next.js site with a working server-side contact form.
               </p>
             </div>
-            <button onClick={() => copy(demo, "demo HTML copied")}>
-              copy HTML
-            </button>
+            <div className="row">
+              <button onClick={() => copy(demo, "static demo HTML copied")}>copy quick HTML</button>
+              <button onClick={() => void exportClientSite()} disabled={loading || !current}>
+                download client site ZIP
+              </button>
+            </div>
           </div>
-          <textarea
-            className="big-textarea code-editor"
-            value={demo}
-            readOnly
-          />
+          {!current && <p className="badge warn">Select a business in Lead Radar first.</p>}
+          <div className="grid">
+            <div className="card stack">
+              <span className="badge">QUICK MOCKUP</span>
+              <strong>Single HTML file</strong>
+              <p className="muted small">Useful for a fast visual pitch. Contact buttons use the business phone/email when available.</p>
+            </div>
+            <div className="card stack">
+              <span className="badge">DEPLOYABLE SITE</span>
+              <strong>Next.js + Vercel contact API</strong>
+              <p className="muted small">Set RESEND_API_KEY, CONTACT_TO_EMAIL, and CONTACT_FROM_EMAIL in the client project. Messages are delivered without exposing the recipient address in browser code.</p>
+            </div>
+          </div>
+          <textarea className="big-textarea code-editor" value={demo} readOnly />
           <div className="card stack demo-preview">
             <h2>{current?.name || "Example Local Business"}</h2>
-            <p className="muted">
-              {current?.category || "local service"} · clean landing page
-              preview
-            </p>
+            <p className="muted">{current?.category || "local service"} · responsive landing page preview</p>
             <div className="row">
-              <span className="buttonlike">Call now</span>
-              <span className="buttonlike">Request quote</span>
+              {current?.phone ? <a className="buttonlike" href={`tel:${current.phone.replace(/[^+\d]/g, "")}`}>Call now</a> : <span className="buttonlike">Call now</span>}
+              {current?.email ? <a className="buttonlike" href={`mailto:${current.email}`}>Email</a> : <span className="buttonlike">Request quote</span>}
             </div>
-            <div className="grid">
-              <div className="photo-box" />
-              <div className="photo-box" />
-              <div className="photo-box" />
-            </div>
+            <div className="grid"><div className="photo-box" /><div className="photo-box" /><div className="photo-box" /></div>
           </div>
         </section>
       )}

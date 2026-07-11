@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { authStatus, requireAdmin } from "@/lib/auth";
+import { requireDevWorkspace } from "@/lib/devGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,6 +82,7 @@ function runShell(command: string, timeoutMs = 70000) {
 export async function POST(req: NextRequest) {
   try {
     requireAdmin(req);
+    requireDevWorkspace();
     const body = await req.json().catch(() => ({}));
     const preset = String(body.preset || "");
     const custom = String(body.command || "").trim();

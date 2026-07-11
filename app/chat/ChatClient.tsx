@@ -102,7 +102,8 @@ export default function ChatClient({ username, role }: { username: string; role:
 
   async function load() {
     try {
-      const response = await fetch("/api/chat/state", {
+      const after = firstLoadRef.current ? 0 : lastIdRef.current;
+      const response = await fetch(`/api/chat/state${after > 0 ? `?after=${after}` : ""}`, {
         cache: "no-store",
       });
 
@@ -112,10 +113,10 @@ export default function ChatClient({ username, role }: { username: string; role:
         throw new Error(data.error || "chat failed");
       }
 
-      const nextMessages = Array.isArray(data.messages) ? data.messages : [];
+      const incomingMessages: Message[] = Array.isArray(data.messages) ? data.messages : [];
       const nextPresence = Array.isArray(data.presence) ? data.presence : [];
-      const nextLastId = nextMessages.length ? nextMessages[nextMessages.length - 1].id : 0;
-      const hasNewMessage = nextLastId !== lastIdRef.current && lastIdRef.current !== 0;
+      const hasNewMessage = Boolean(data.incremental && incomingMessages.length);
+      const incomingLastId = incomingMessages.length ? incomingMessages[incomingMessages.length - 1].id : 0;
 
       if (hasNewMessage) {
         setStatus(
@@ -126,8 +127,14 @@ export default function ChatClient({ username, role }: { username: string; role:
         );
       }
 
-      lastIdRef.current = nextLastId;
-      setMessages(nextMessages);
+      if (incomingLastId > lastIdRef.current) lastIdRef.current = incomingLastId;
+      setMessages((old) => {
+        if (!data.incremental) return incomingMessages;
+        if (!incomingMessages.length) return old;
+        const merged = new Map(old.map((message) => [message.id, message]));
+        incomingMessages.forEach((message) => merged.set(message.id, message));
+        return Array.from(merged.values()).sort((a, b) => a.id - b.id).slice(-200);
+      });
       setPresence(nextPresence);
 
       window.setTimeout(() => {

@@ -4,6 +4,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { NextRequest, NextResponse } from "next/server";
 import { authStatus, requireAdmin } from "@/lib/auth";
+import { requireDevWorkspace } from "@/lib/devGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ function run(cmd: string, args: string[], cwd: string) {
 export async function GET(req: NextRequest) {
   try {
     requireAdmin(req);
+    requireDevWorkspace();
     const cwd = path.resolve(process.env.DEV_WORKSPACE_ROOT || runtimeCwd());
     const tmp = path.join(os.tmpdir(), `dashboard-export-${Date.now()}.zip`);
 

@@ -27,6 +27,10 @@ function clean(value: unknown, max = 5000) {
   return String(value ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, " ").trim().slice(0, max);
 }
 
+function cleanHeader(value: unknown, max = 500) {
+  return clean(value, max).replace(/[\r\n]+/g, " ").trim();
+}
+
 function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -43,7 +47,8 @@ function b64(value: string) {
 }
 
 function mimeHeader(value: string) {
-  return /^[\x00-\x7f]*$/.test(value) ? value : `=?UTF-8?B?${b64(value)}?=`;
+  const safe = cleanHeader(value, 500);
+  return /^[\x00-\x7f]*$/.test(safe) ? safe : `=?UTF-8?B?${b64(safe)}?=`;
 }
 
 function escapeData(value: string) {
@@ -199,7 +204,7 @@ export async function POST(req: NextRequest) {
     requireAdmin(req);
     const body = await req.json().catch(() => ({}));
     const to = clean(body.to, 320);
-    const subject = clean(body.subject, 180);
+    const subject = cleanHeader(body.subject, 180);
     const message = clean(body.body, 10000);
     const provider = clean(body.provider || process.env.EMAIL_PROVIDER || "auto", 20).toLowerCase();
 

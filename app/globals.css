@@ -1056,3 +1056,270 @@ iframe {
     grid-template-columns: 1fr;
   }
 }
+
+/* Business radar v2 */
+.lead-finder-panel {
+  min-width: 0;
+}
+
+.field-with-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.compact-chips {
+  max-height: 112px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.advanced-search {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #060606;
+  overflow: hidden;
+}
+
+.advanced-search > summary {
+  cursor: pointer;
+  padding: 11px 12px;
+  color: var(--accent2);
+  user-select: none;
+}
+
+.advanced-search[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.advanced-search > :not(summary) {
+  margin-left: 12px;
+  margin-right: 12px;
+}
+
+.advanced-search > :last-child {
+  margin-bottom: 12px;
+}
+
+.advanced-search-grid {
+  margin-top: 12px;
+}
+
+.wrap-actions {
+  flex-wrap: wrap;
+}
+
+.scan-summary {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.scan-card {
+  border: 1px solid var(--line);
+  background: #060606;
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.scan-card .buttonlike {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 12px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slippy-map {
+  position: relative;
+  width: 100%;
+  height: clamp(360px, 58vh, 680px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 14px;
+  background: #101010;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  isolation: isolate;
+}
+
+.slippy-map:active {
+  cursor: grabbing;
+}
+
+.map-tile-layer,
+.map-marker-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.map-tile-layer {
+  z-index: 0;
+  pointer-events: none;
+  background: #151515;
+}
+
+.map-tile {
+  position: absolute;
+  display: block;
+  max-width: none;
+  border: 0;
+  filter: grayscale(1) brightness(0.56) contrast(1.35);
+  pointer-events: none;
+}
+
+.map-marker-layer {
+  z-index: 3;
+  pointer-events: none;
+}
+
+.street-map-pin {
+  position: absolute;
+  z-index: 4;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, -92%);
+  overflow: visible;
+  pointer-events: auto;
+  box-shadow: none;
+}
+
+.street-map-pin:hover,
+.street-map-pin:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  z-index: 8;
+}
+
+.street-pin-dot {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 2px auto 0;
+  border: 3px solid #050505;
+  border-radius: 50% 50% 50% 0;
+  background: #e9e9e9;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 9px rgba(0, 0, 0, 0.8);
+}
+
+.street-map-pin.hot .street-pin-dot {
+  background: var(--warn);
+}
+
+.street-map-pin.selected .street-pin-dot {
+  background: var(--greenlamp);
+  width: 22px;
+  height: 22px;
+  box-shadow: 0 0 0 3px rgba(36, 255, 122, 0.26), 0 3px 12px #000;
+}
+
+.street-pin-label {
+  position: absolute;
+  left: 50%;
+  bottom: 27px;
+  transform: translateX(-50%);
+  max-width: 230px;
+  min-width: max-content;
+  padding: 5px 8px;
+  border: 1px solid #777;
+  border-radius: 7px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.93);
+  font-size: 11px;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.map-search-center {
+  position: absolute;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: 0 0 0 5px rgba(0, 0, 0, 0.34);
+}
+
+.map-search-center::before,
+.map-search-center::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.map-search-center::before {
+  width: 28px;
+  height: 1px;
+  left: -6px;
+  top: 8px;
+}
+
+.map-search-center::after {
+  width: 1px;
+  height: 28px;
+  top: -6px;
+  left: 8px;
+}
+
+.map-coordinate-readout,
+.map-attribution {
+  position: absolute;
+  z-index: 6;
+  bottom: 5px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  color: #ddd;
+  background: rgba(0, 0, 0, 0.82);
+  font-size: 10px;
+  pointer-events: auto;
+}
+
+.map-coordinate-readout {
+  left: 5px;
+}
+
+.map-attribution {
+  right: 5px;
+}
+
+.map-attribution a {
+  color: #fff;
+}
+
+@media (max-width: 700px) {
+  .field-with-button {
+    grid-template-columns: 1fr;
+  }
+
+  .field-with-button button {
+    width: 100%;
+  }
+
+  .slippy-map {
+    height: 430px;
+  }
+
+  .map-head,
+  .map-foot {
+    align-items: flex-start;
+  }
+
+  .map-controls {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .map-controls button {
+    flex: 1 1 auto;
+  }
+}

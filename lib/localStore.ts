@@ -15,6 +15,10 @@ export type BusinessLead = {
   contactFormUrl: string;
   facebookUrl: string;
   instagramUrl: string;
+  linkedinUrl: string;
+  tiktokUrl: string;
+  whatsappUrl: string;
+  messengerUrl: string;
   contactStatus: string;
   siteQuality: string;
   siteNotes: string;
@@ -96,6 +100,10 @@ function leadDefaults(input: Partial<BusinessLead> & Pick<BusinessLead, "id" | "
     contactFormUrl: cleanUrl(input.contactFormUrl, 500),
     facebookUrl: cleanUrl(input.facebookUrl, 500),
     instagramUrl: cleanUrl(input.instagramUrl, 500),
+    linkedinUrl: cleanUrl(input.linkedinUrl, 500),
+    tiktokUrl: cleanUrl(input.tiktokUrl, 500),
+    whatsappUrl: cleanUrl(input.whatsappUrl, 500),
+    messengerUrl: cleanUrl(input.messengerUrl, 500),
     contactStatus: cleanText(input.contactStatus || "unknown", 40),
     siteQuality: cleanText(input.siteQuality || "unknown", 40),
     siteNotes: cleanText(input.siteNotes, 1200),
@@ -134,6 +142,10 @@ async function ensureBusinessSchema() {
     contact_form_url TEXT NOT NULL DEFAULT '',
     facebook_url TEXT NOT NULL DEFAULT '',
     instagram_url TEXT NOT NULL DEFAULT '',
+    linkedin_url TEXT NOT NULL DEFAULT '',
+    tiktok_url TEXT NOT NULL DEFAULT '',
+    whatsapp_url TEXT NOT NULL DEFAULT '',
+    messenger_url TEXT NOT NULL DEFAULT '',
     contact_status TEXT NOT NULL DEFAULT 'unknown',
     site_quality TEXT NOT NULL DEFAULT 'unknown',
     site_notes TEXT NOT NULL DEFAULT '',
@@ -160,6 +172,10 @@ async function ensureBusinessSchema() {
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS contact_form_url TEXT NOT NULL DEFAULT ''`;
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS facebook_url TEXT NOT NULL DEFAULT ''`;
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS instagram_url TEXT NOT NULL DEFAULT ''`;
+  await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS linkedin_url TEXT NOT NULL DEFAULT ''`;
+  await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS tiktok_url TEXT NOT NULL DEFAULT ''`;
+  await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS whatsapp_url TEXT NOT NULL DEFAULT ''`;
+  await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS messenger_url TEXT NOT NULL DEFAULT ''`;
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS contact_status TEXT NOT NULL DEFAULT 'unknown'`;
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS site_quality TEXT NOT NULL DEFAULT 'unknown'`;
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS site_notes TEXT NOT NULL DEFAULT ''`;
@@ -190,6 +206,10 @@ function fromDbLead(row: any): BusinessLead {
     contactFormUrl: row.contact_form_url,
     facebookUrl: row.facebook_url,
     instagramUrl: row.instagram_url,
+    linkedinUrl: row.linkedin_url,
+    tiktokUrl: row.tiktok_url,
+    whatsappUrl: row.whatsapp_url,
+    messengerUrl: row.messenger_url,
     contactStatus: row.contact_status,
     siteQuality: row.site_quality,
     siteNotes: row.site_notes,
@@ -235,7 +255,7 @@ async function writeFileStore(store: StoreShape) {
 export async function listLeads() {
   const db = sql();
   if (db && await ensureBusinessSchema()) {
-    const rows = await db`SELECT id, name, category, address, phone, email, contact_form_url, facebook_url, instagram_url, contact_status, site_quality, site_notes, last_scanned_at, website, maps_url, rating, user_rating_count, lat, lng, score, status, notes, offer_price, package_name, next_follow_up, last_contacted, source, created_at::text, updated_at::text FROM viewport_business_leads ORDER BY updated_at DESC`;
+    const rows = await db`SELECT id, name, category, address, phone, email, contact_form_url, facebook_url, instagram_url, linkedin_url, tiktok_url, whatsapp_url, messenger_url, contact_status, site_quality, site_notes, last_scanned_at, website, maps_url, rating, user_rating_count, lat, lng, score, status, notes, offer_price, package_name, next_follow_up, last_contacted, source, created_at::text, updated_at::text FROM viewport_business_leads ORDER BY updated_at DESC`;
     return (rows as any[]).map(fromDbLead);
   }
 
@@ -251,9 +271,9 @@ export async function upsertLead(input: Partial<BusinessLead> & Pick<BusinessLea
   const db = sql();
   if (db && await ensureBusinessSchema()) {
     const rows = await db`INSERT INTO viewport_business_leads(
-      id, name, category, address, phone, email, contact_form_url, facebook_url, instagram_url, contact_status, site_quality, site_notes, last_scanned_at, website, maps_url, rating, user_rating_count, lat, lng, score, status, notes, offer_price, package_name, next_follow_up, last_contacted, source, created_at, updated_at
+      id, name, category, address, phone, email, contact_form_url, facebook_url, instagram_url, linkedin_url, tiktok_url, whatsapp_url, messenger_url, contact_status, site_quality, site_notes, last_scanned_at, website, maps_url, rating, user_rating_count, lat, lng, score, status, notes, offer_price, package_name, next_follow_up, last_contacted, source, created_at, updated_at
     ) VALUES(
-      ${next.id}, ${next.name}, ${next.category}, ${next.address}, ${next.phone}, ${next.email}, ${next.contactFormUrl}, ${next.facebookUrl}, ${next.instagramUrl}, ${next.contactStatus}, ${next.siteQuality}, ${next.siteNotes}, ${next.lastScannedAt}, ${next.website}, ${next.mapsUrl}, ${next.rating}, ${next.userRatingCount}, ${next.lat}, ${next.lng}, ${next.score}, ${next.status}, ${next.notes}, ${next.offerPrice}, ${next.packageName}, ${next.nextFollowUp}, ${next.lastContacted}, ${next.source}, ${next.createdAt}, NOW()
+      ${next.id}, ${next.name}, ${next.category}, ${next.address}, ${next.phone}, ${next.email}, ${next.contactFormUrl}, ${next.facebookUrl}, ${next.instagramUrl}, ${next.linkedinUrl}, ${next.tiktokUrl}, ${next.whatsappUrl}, ${next.messengerUrl}, ${next.contactStatus}, ${next.siteQuality}, ${next.siteNotes}, ${next.lastScannedAt}, ${next.website}, ${next.mapsUrl}, ${next.rating}, ${next.userRatingCount}, ${next.lat}, ${next.lng}, ${next.score}, ${next.status}, ${next.notes}, ${next.offerPrice}, ${next.packageName}, ${next.nextFollowUp}, ${next.lastContacted}, ${next.source}, ${next.createdAt}, NOW()
     ) ON CONFLICT(id) DO UPDATE SET
       name=EXCLUDED.name,
       category=EXCLUDED.category,
@@ -263,6 +283,10 @@ export async function upsertLead(input: Partial<BusinessLead> & Pick<BusinessLea
       contact_form_url=EXCLUDED.contact_form_url,
       facebook_url=EXCLUDED.facebook_url,
       instagram_url=EXCLUDED.instagram_url,
+      linkedin_url=EXCLUDED.linkedin_url,
+      tiktok_url=EXCLUDED.tiktok_url,
+      whatsapp_url=EXCLUDED.whatsapp_url,
+      messenger_url=EXCLUDED.messenger_url,
       contact_status=EXCLUDED.contact_status,
       site_quality=EXCLUDED.site_quality,
       site_notes=EXCLUDED.site_notes,
@@ -282,7 +306,7 @@ export async function upsertLead(input: Partial<BusinessLead> & Pick<BusinessLea
       last_contacted=EXCLUDED.last_contacted,
       source=EXCLUDED.source,
       updated_at=NOW()
-    RETURNING id, name, category, address, phone, email, contact_form_url, facebook_url, instagram_url, contact_status, site_quality, site_notes, last_scanned_at, website, maps_url, rating, user_rating_count, lat, lng, score, status, notes, offer_price, package_name, next_follow_up, last_contacted, source, created_at::text, updated_at::text`;
+    RETURNING id, name, category, address, phone, email, contact_form_url, facebook_url, instagram_url, linkedin_url, tiktok_url, whatsapp_url, messenger_url, contact_status, site_quality, site_notes, last_scanned_at, website, maps_url, rating, user_rating_count, lat, lng, score, status, notes, offer_price, package_name, next_follow_up, last_contacted, source, created_at::text, updated_at::text`;
     return fromDbLead((rows as any[])[0]);
   }
 
@@ -300,23 +324,33 @@ export async function patchLead(id: string, patch: Partial<BusinessLead>) {
 
   const db = sql();
   if (db && await ensureBusinessSchema()) {
-    const existing = await db`SELECT id, name, category, address, phone, email, contact_form_url, facebook_url, instagram_url, contact_status, site_quality, site_notes, last_scanned_at, website, maps_url, rating, user_rating_count, lat, lng, score, status, notes, offer_price, package_name, next_follow_up, last_contacted, source, created_at::text, updated_at::text FROM viewport_business_leads WHERE id=${cleanId} LIMIT 1`;
+    const existing = await db`SELECT id, name, category, address, phone, email, contact_form_url, facebook_url, instagram_url, linkedin_url, tiktok_url, whatsapp_url, messenger_url, contact_status, site_quality, site_notes, last_scanned_at, website, maps_url, rating, user_rating_count, lat, lng, score, status, notes, offer_price, package_name, next_follow_up, last_contacted, source, created_at::text, updated_at::text FROM viewport_business_leads WHERE id=${cleanId} LIMIT 1`;
     if (!(existing as any[]).length) throw new Error("lead not found");
     const current = fromDbLead((existing as any[])[0]);
     const next = leadDefaults({ ...current, ...patch, id: current.id, name: current.name });
 
     const rows = await db`UPDATE viewport_business_leads SET
       category=${next.category},
+      address=${next.address},
       phone=${next.phone},
       email=${next.email},
       contact_form_url=${next.contactFormUrl},
       facebook_url=${next.facebookUrl},
       instagram_url=${next.instagramUrl},
+      linkedin_url=${next.linkedinUrl},
+      tiktok_url=${next.tiktokUrl},
+      whatsapp_url=${next.whatsappUrl},
+      messenger_url=${next.messengerUrl},
       contact_status=${next.contactStatus},
       site_quality=${next.siteQuality},
       site_notes=${next.siteNotes},
       last_scanned_at=${next.lastScannedAt},
       website=${next.website},
+      maps_url=${next.mapsUrl},
+      rating=${next.rating},
+      user_rating_count=${next.userRatingCount},
+      lat=${next.lat},
+      lng=${next.lng},
       score=${next.score},
       status=${next.status},
       notes=${next.notes},
@@ -324,9 +358,10 @@ export async function patchLead(id: string, patch: Partial<BusinessLead>) {
       package_name=${next.packageName},
       next_follow_up=${next.nextFollowUp},
       last_contacted=${next.lastContacted},
+      source=${next.source},
       updated_at=NOW()
     WHERE id=${cleanId}
-    RETURNING id, name, category, address, phone, email, contact_form_url, facebook_url, instagram_url, contact_status, site_quality, site_notes, last_scanned_at, website, maps_url, rating, user_rating_count, lat, lng, score, status, notes, offer_price, package_name, next_follow_up, last_contacted, source, created_at::text, updated_at::text`;
+    RETURNING id, name, category, address, phone, email, contact_form_url, facebook_url, instagram_url, linkedin_url, tiktok_url, whatsapp_url, messenger_url, contact_status, site_quality, site_notes, last_scanned_at, website, maps_url, rating, user_rating_count, lat, lng, score, status, notes, offer_price, package_name, next_follow_up, last_contacted, source, created_at::text, updated_at::text`;
     return fromDbLead((rows as any[])[0]);
   }
 

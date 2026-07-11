@@ -195,6 +195,15 @@ function chatTtlHours() {
   return Number.isFinite(raw) && raw > 0 ? Math.min(raw, 24 * 365) : 0;
 }
 
+export async function listChatMessagesAfter(afterId: number, limit = 100): Promise<ChatMessage[]> {
+  const db = sql();
+  if (!db) return [];
+  await ensureSchema();
+  const after = Math.max(0, Math.floor(afterId || 0));
+  const rows = await db`SELECT id::int, username, role, body, attachments, created_at::text FROM viewport_chat_messages WHERE id > ${after} ORDER BY id ASC LIMIT ${Math.max(1, Math.min(limit, 200))}`;
+  return rows as unknown as ChatMessage[];
+}
+
 export async function listChatMessages(limit = 80): Promise<ChatMessage[]> {
   const db = sql();
   if (!db) return [];

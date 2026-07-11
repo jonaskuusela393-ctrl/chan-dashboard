@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { canAccess, getSession } from "@/lib/auth";
+import { devWorkspaceEnabled } from "@/lib/devGuard";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   const chatOnly = session?.role === "user";
+  const showDev = devWorkspaceEnabled();
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -37,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   {canAccess(session, "youtube") && <Link href="/youtube">YouTube</Link>}
                   {canAccess(session, "business") && <Link href="/business">Money</Link>}
                   {canAccess(session, "email") && <Link href="/email">Email</Link>}
-                  {canAccess(session, "dev") && <Link href="/dev">Dev</Link>}
+                  {showDev && canAccess(session, "dev") && <Link href="/dev">Dev</Link>}
                   <Link href="/chat">Chat</Link>
                   <span className="userpill">{session.username}:admin</span>
                   <a href="/api/auth/logout">logout</a>

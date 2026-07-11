@@ -53,7 +53,7 @@ function safeEqual(a: string, b: string) {
 }
 
 export function createSessionValue(username: string, role: Role) {
-  const days = Math.max(1, Math.min(Number(process.env.SESSION_DAYS || 30), 365));
+  const days = Math.max(1, Math.min(Number(process.env.SESSION_DAYS || 14), 365));
   const payload = b64url(JSON.stringify({ username, role, exp: Date.now() + days * 86400000 }));
   return `${payload}.${sign(payload)}`;
 }
@@ -109,6 +109,8 @@ export function requireModule(req: NextRequest, module: ModuleKey) {
 }
 
 export function authStatus(error: unknown) {
+  const explicit = typeof error === "object" && error && "status" in error ? Number((error as { status?: unknown }).status) : 0;
+  if (Number.isInteger(explicit) && explicit >= 400 && explicit <= 599) return explicit;
   const message = error instanceof Error ? error.message : String(error || "");
   if (message === "Not logged in") return 401;
   if (message === "Admin only" || message === "Forbidden") return 403;

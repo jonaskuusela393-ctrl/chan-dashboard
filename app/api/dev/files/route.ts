@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { authStatus, requireAdmin } from "@/lib/auth";
+import { requireDevWorkspace } from "@/lib/devGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,6 +72,7 @@ async function tree(dir: string, rel = "", depth = 0): Promise<TreeNode[]> {
 export async function GET(req: NextRequest) {
   try {
     requireAdmin(req);
+    requireDevWorkspace();
     const action = req.nextUrl.searchParams.get("action") || "tree";
     const target = req.nextUrl.searchParams.get("path") || "";
     const safe = resolveSafe(target);
@@ -94,6 +96,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     requireAdmin(req);
+    requireDevWorkspace();
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
     const safe = resolveSafe(String(body.path || ""));

@@ -57,6 +57,10 @@ CREATE TABLE IF NOT EXISTS viewport_business_leads (
   contact_form_url TEXT NOT NULL DEFAULT '',
   facebook_url TEXT NOT NULL DEFAULT '',
   instagram_url TEXT NOT NULL DEFAULT '',
+  linkedin_url TEXT NOT NULL DEFAULT '',
+  tiktok_url TEXT NOT NULL DEFAULT '',
+  whatsapp_url TEXT NOT NULL DEFAULT '',
+  messenger_url TEXT NOT NULL DEFAULT '',
   contact_status TEXT NOT NULL DEFAULT 'unknown',
   site_quality TEXT NOT NULL DEFAULT 'unknown',
   site_notes TEXT NOT NULL DEFAULT '',
@@ -83,6 +87,10 @@ ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS email TEXT NOT NULL
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS contact_form_url TEXT NOT NULL DEFAULT '';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS facebook_url TEXT NOT NULL DEFAULT '';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS instagram_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS linkedin_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS tiktok_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS whatsapp_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS messenger_url TEXT NOT NULL DEFAULT '';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS contact_status TEXT NOT NULL DEFAULT 'unknown';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS site_quality TEXT NOT NULL DEFAULT 'unknown';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS site_notes TEXT NOT NULL DEFAULT '';
