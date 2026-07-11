@@ -130,3 +130,7 @@ Old database-embedded attachments remain readable. In production, new attachment
 - Broad Google Places searches cost more API requests than quick mode.
 - OpenStreetMap tiles require internet access in the browser.
 - Never enable arbitrary Dev Workspace commands on a public deployment.
+
+## Halo: Earth Command game module
+
+The admin dashboard now includes `/game`, an Earth-first Halo grand-strategy simulation with strategic, street-level, orbital and Sol-system views. See `README_GAME_MODULE.md` and `CHANGELOG_GAME_MODULE.md`.

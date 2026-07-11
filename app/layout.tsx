@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Black Terminal Viewport",
-  description: "Private terminal dashboard for chat, browsing, local leads, email, and mobile coding",
+  description: "Private terminal dashboard for chat, browsing, local leads, Halo Earth strategy, email, and mobile coding",
 };
 
 export const viewport: Viewport = {
@@ -38,6 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   {canAccess(session, "reddit") && <Link href="/reddit">Reddit</Link>}
                   {canAccess(session, "youtube") && <Link href="/youtube">YouTube</Link>}
                   {canAccess(session, "business") && <Link href="/business">Money</Link>}
+                  {canAccess(session, "game") && <Link href="/game">Game</Link>}
                   {canAccess(session, "email") && <Link href="/email">Email</Link>}
                   {showDev && canAccess(session, "dev") && <Link href="/dev">Dev</Link>}
                   <Link href="/chat">Chat</Link>

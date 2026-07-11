@@ -15,6 +15,7 @@ export default async function Home() {
     { key: "reddit" as const, href: "/reddit", badge: "REDDIT", title: "Forum viewport", text: "Browse subreddits, comments, permanent hides, and timed subreddit disables." },
     { key: "youtube" as const, href: "/youtube", badge: "YOUTUBE", title: "Text browser", text: "No thumbnails. Search, details, optional player only after button press." },
     { key: "business" as const, href: "/business", badge: "MONEY", title: "Local business money dashboard", text: "Lead finder, audits, offer builder, pitch generator, demo pages, CRM, templates, content, and money tracking." },
+    { key: "game" as const, href: "/game", badge: "GAME", title: "Halo: Earth Command", text: "Earth-first grand strategy simulation with strategic, street, orbital, resource, research, production, diplomacy, unit and canon-event systems." },
     { key: "email" as const, href: "/email", badge: "EMAIL", title: "Outreach console", text: "Create personalized website-offer emails, open mailto, or send through optional Resend API." },
     { key: "dev" as const, href: "/dev", badge: "DEV", title: "Mobile coding workspace", text: "Local-only file explorer, editor, terminal command buttons, build log helper, and project ZIP export." },
     { key: "chat" as const, href: "/chat", badge: "CHAT", title: "Private chat", text: "Two accounts, online lamps, incremental updates, and private Vercel Blob media storage." },
@@ -32,6 +33,7 @@ export default async function Home() {
           </p>
           <div className="row">
             <Link className="buttonlike" href="/business">open money dashboard</Link>
+            <Link className="buttonlike" href="/game">open Earth Command</Link>
             {showDev && <Link className="buttonlike" href="/dev">open dev workspace</Link>}
             <Link className="buttonlike" href="/chat">open chat</Link>
           </div>

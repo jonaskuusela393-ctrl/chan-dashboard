@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 
 export type Role = "admin" | "user";
-export type ModuleKey = "chat" | "chan" | "reddit" | "youtube" | "business" | "email" | "dev" | "settings";
+export type ModuleKey = "chat" | "chan" | "reddit" | "youtube" | "business" | "game" | "email" | "dev" | "settings";
 
 export type Session = {
   username: string;
@@ -20,13 +20,14 @@ export const MODULE_LABELS: Record<ModuleKey, string> = {
   reddit: "Reddit",
   youtube: "YouTube",
   business: "Client radar",
+  game: "Halo Earth Command",
   email: "Email",
   dev: "Dev workspace",
   settings: "Settings",
 };
 
 export const ROLE_MODULES: Record<Role, ModuleKey[]> = {
-  admin: ["chat", "chan", "reddit", "youtube", "business", "email", "dev", "settings"],
+  admin: ["chat", "chan", "reddit", "youtube", "business", "game", "email", "dev", "settings"],
   user: ["chat"],
 };
 
