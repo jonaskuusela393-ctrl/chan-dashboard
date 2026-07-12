@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react";
 import LeadFinderClient from "./LeadFinderClient";
 import BusinessOperationsClient, { type BusinessSection } from "./BusinessOperationsClient";
+import ClientManagementClient from "./ClientManagementClient";
+import ClaudeAssistantClient from "./ClaudeAssistantClient";
 
-type Section = "finder" | BusinessSection;
+type Section = "finder" | "clients" | "assistant" | BusinessSection;
 const sections: Array<{ key: Section; label: string; description: string }> = [
-  { key: "finder", label: "lead finder", description: "search, terminal map, scanning, old offers, demos and content tools" },
+  { key: "finder", label: "lead finder", description: "search, terminal map, scanning, offers, demos and content tools" },
+  { key: "clients", label: "client sites", description: "live status, ownership, maintenance, requests and complete project history" },
+  { key: "assistant", label: "AI assistant", description: "optional Claude-enhanced drafting with reliable built-in fallbacks" },
   { key: "pipeline", label: "pipeline", description: "kanban CRM, notes, tasks and follow-ups" },
   { key: "contacts", label: "contacts", description: "multiple emails, phones, forms and social profiles per company" },
   { key: "inbox", label: "email inbox", description: "read Gmail threads, attachments, reply, archive and connect replies to companies" },
@@ -40,6 +44,6 @@ export default function BusinessClient({ username }: { username: string }) {
       <div className="module-tabs business-suite-tabs">{sections.map((item) => <button key={item.key} className={section === item.key ? "active-btn" : ""} onClick={() => change(item.key)}>{item.label}</button>)}</div>
       <p className="muted small"><strong>{active.label}:</strong> {active.description}</p>
     </section>
-    {section === "finder" ? <LeadFinderClient username={username} /> : <BusinessOperationsClient section={section} username={username} />}
+    {section === "finder" ? <LeadFinderClient username={username} /> : section === "clients" ? <ClientManagementClient /> : section === "assistant" ? <ClaudeAssistantClient /> : <BusinessOperationsClient section={section} username={username} />}
   </div>;
 }

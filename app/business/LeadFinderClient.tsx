@@ -185,8 +185,8 @@ function safeLead(value: unknown): BusinessLead | null {
       ? (input.status as LeadStatus)
       : "new",
     notes: text(input.notes),
-    offerPrice: text(input.offerPrice) || "300€",
-    packageName: text(input.packageName) || "Starter Website",
+    offerPrice: text(input.offerPrice) || "1,490€",
+    packageName: text(input.packageName) || "Complete Business Website",
     nextFollowUp: text(input.nextFollowUp),
     lastContacted: text(input.lastContacted),
     source: text(input.source) || "unknown",
@@ -266,7 +266,7 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
 
 const PACKAGES = [
   {
-    name: "Starter Website",
+    name: "Complete Business Website",
     price: "250€",
     text: "One-page mobile site, services, photos, contact buttons, Google Maps link.",
   },
@@ -527,8 +527,8 @@ export default function LeadFinderClient({ username }: { username: string }) {
   const [manualPhone, setManualPhone] = useState("");
   const [manualEmail, setManualEmail] = useState("");
   const [manualWebsite, setManualWebsite] = useState("");
-  const [price, setPrice] = useState("300€");
-  const [packageName, setPackageName] = useState("Starter Website");
+  const [price, setPrice] = useState("1,490€");
+  const [packageName, setPackageName] = useState("Complete Business Website");
   const [tone, setTone] = useState("friendly");
   const [contentKind, setContentKind] =
     useState<keyof ReturnType<typeof contentPack>>("hero");
@@ -1906,7 +1906,7 @@ export default function LeadFinderClient({ username }: { username: string }) {
                   onClick={() => {
                     setQuery(niche);
                     setManualCategory(niche);
-                    setPackageName("Starter Website");
+                    setPackageName("Complete Business Website");
                     setTab("radar");
                   }}
                 >

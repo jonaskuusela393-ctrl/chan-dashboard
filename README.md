@@ -1,134 +1,70 @@
-# Website Business Command v7
+# Raccoon North Business Command
 
-A Next.js application for running a small website-service business on Vercel and Neon.
+A private Vercel/Neon operating dashboard plus a public bilingual website-service landing page.
 
-It now has two clearly separated sides:
+## Public site
 
-- **Public website:** service explanation, project estimate calculator, contact form, privacy notice and service terms.
-- **Private operations dashboard:** lead finder, green terminal map, contact scanner, CRM, Gmail inbox, SMS, audits, proposals, client-site export, inquiries, revenue, chat and local-only development tools.
+The public site is available without an account and includes:
 
-The old 4chan and Reddit modules have been removed.
+- professional English/Finnish service wording
+- plain-language packages and a non-binding estimate calculator
+- public project enquiry form
+- no-login client support/change-request form using a private project code
+- company, privacy, cookie, B2B terms, accessibility and data-processing pages
 
-## Public lead flow
+Customers cannot register or log into the private dashboard.
 
-A visitor can submit either a general message or an estimate request. A successful submission:
+## Private admin tools
 
-1. Creates a high-priority lead in `viewport_business_leads`.
-2. Stores the complete request in the business inquiry inbox.
-3. Adds the visitor's email and phone as separate CRM contacts.
-4. Creates a high-priority reply task due within 24 hours.
-5. Optionally emails an alert through Resend.
+- green-terminal Google Places lead finder and accurate OpenStreetMap street map
+- contact discovery and website audits
+- Gmail inbox/replies and Twilio SMS
+- CRM pipeline, contacts, tasks, proposals, inquiries and money tracking
+- client website records: online/offline/maintenance state, ownership, URLs, repository, support plan, requests and project log
+- optional Claude-assisted drafting with safe built-in fallback
 
-The estimate is calculated again on the server before it is stored. It is explicitly presented as a non-binding planning range.
+## Deployment
 
-## Private modules
+1. Create/connect a Neon Postgres database and add the pooled `DATABASE_URL` to Vercel.
+2. Run `NEON_SCHEMA.sql` once in the Neon SQL Editor. Runtime schema creation is also included for the new client tables.
+3. Copy `.env.example` values into Vercel and replace every placeholder.
+4. Add a long `AUTH_SECRET`, admin credentials and your real legal business details.
+5. Deploy to Vercel and connect the public domain.
+6. Test the landing-page forms, support-code flow, Gmail/Twilio integrations and website-status checks.
 
-Admin:
+## Required legal setup
 
-- Business Command
-  - Google Places lead finder and grid searching
-  - Black-and-neon-green accurate map
-  - Static and Browserless-assisted contact discovery
-  - Multiple contacts per company
-  - Kanban CRM, tasks and timeline
-  - Gmail inbox, threads and replies
-  - Twilio SMS and delivery state
-  - Website audits and screenshots
-  - Proposals, invoices, payments and expenses
-  - Generated Vercel-ready customer sites
-  - Website inquiry inbox
-- Email
-- YouTube text browser
-- Private chat
-- Local-only Dev Workspace
+`Raccoon North Web Studio` is a working name, not proof of registration or exclusivity. Before commercial use:
 
-The second private account remains chat-only. Server routes enforce this restriction.
+- check and register the company/trading name as appropriate
+- set the actual legal name, Business ID, address, contact information and VAT status
+- review the legal templates against the real legal form, services, providers and customer type
+- obtain Finnish professional legal/accounting review where needed
 
-## Install and build
+See `LEGAL_SETUP_CHECKLIST.md`, `SERVICE_AGREEMENT_TEMPLATE.md`, `DATA_PROCESSING_AGREEMENT_TEMPLATE.md` and `MAINTENANCE_SLA_TEMPLATE.md`.
 
-```cmd
-npx --yes pnpm@10.13.1 install
+## Optional Claude layer
+
+Set:
+
+```env
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-haiku-4-5
+```
+
+Claude is used only to improve admin drafts. If it is not configured, rejects a request, reaches a limit, times out or returns an error, the route returns the built-in draft. Maps, CRM, email, SMS, estimates, client records and public forms do not depend on Claude.
+
+## Build
+
+```bash
+npx --yes pnpm@10.13.1 install --frozen-lockfile
 npx --yes pnpm@10.13.1 build
 ```
 
-Development:
+## Git
 
-```cmd
-npx --yes pnpm@10.13.1 dev
+```bash
+git add .
+git commit -m "Jonas"
+git push
 ```
-
-Windows build log:
-
-```cmd
-npx --yes pnpm@10.13.1 build > build-log.txt 2>&1 & notepad build-log.txt
-```
-
-## Vercel and Neon setup
-
-1. Import the repository into Vercel.
-2. Add the values from `.env.example`.
-3. Use Neon's pooled `DATABASE_URL`.
-4. Run `NEON_SCHEMA.sql` once in Neon SQL Editor.
-5. Enable Google Places (New) and Geocoding if using the lead finder.
-6. Connect a private Vercel Blob store if chat file uploads are needed.
-7. Redeploy.
-
-The public forms need Neon because they create CRM records. Resend is optional: when it is not configured, inquiries still appear inside **Business → Inquiries**.
-
-## Public brand settings
-
-```env
-NEXT_PUBLIC_SERVICE_NAME=Jonas Web Studio
-NEXT_PUBLIC_SERVICE_EMAIL=
-NEXT_PUBLIC_SERVICE_LOCATION=Finland
-PUBLIC_CONTACT_TO_EMAIL=
-PUBLIC_CONTACT_FROM_EMAIL=Jonas Web Studio <website@your-verified-domain.com>
-```
-
-Optional public-form spam protection:
-
-```env
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=
-TURNSTILE_SECRET_KEY=
-```
-
-Create a Turnstile widget for the production domain and configure both values together. Leave both empty to use the built-in honeypot, minimum-fill-time check and basic request throttling.
-
-## Recommended client ownership model
-
-For most small-business projects:
-
-- The client should own the domain registrar account.
-- The client should preferably own the production Vercel account/project and paid third-party services.
-- The developer is invited as a team member or project administrator.
-- A normal brochure site can use Vercel without Neon.
-- Add Neon only when the site needs stored inquiries, accounts, dashboards, dynamic records or other application data.
-- The proposal must state who owns source code, domains, hosting accounts and data.
-- Monthly care should be a separate service with a precise update allowance and exit process.
-
-Managing everything under an agency account is possible, but the contract must explain billing, ownership, exports and what happens when the customer cancels.
-
-## Generated client sites
-
-Generated websites can save contact submissions in this dashboard and optionally send a copy through Resend. Configure each generated project with:
-
-```env
-DASHBOARD_INQUIRY_WEBHOOK=https://your-dashboard.vercel.app/api/business/inquiries/public
-DASHBOARD_INQUIRY_SECRET=the-same-INQUIRY_WEBHOOK_SECRET
-DASHBOARD_LEAD_ID=the-exported-company-id
-
-RESEND_API_KEY=
-CONTACT_TO_EMAIL=client@example.com
-CONTACT_FROM_EMAIL=Website <website@your-verified-domain.com>
-```
-
-## Security notes
-
-- Dev Workspace is disabled on Vercel and production by default.
-- Website scanners block localhost, private networks, metadata IPs and unsafe redirects.
-- Login failures are throttled.
-- Public forms validate and recalculate estimates server-side.
-- Gmail OAuth tokens are encrypted using `AUTH_SECRET` before database storage.
-- Twilio webhook signatures are validated.
-- Never expose production secrets through `NEXT_PUBLIC_` variables.
-- Review and replace the generic privacy and service-terms text with business-specific legal information before accepting real customers.

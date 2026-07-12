@@ -117,8 +117,8 @@ function leadDefaults(input: Partial<BusinessLead> & Pick<BusinessLead, "id" | "
     score: Math.max(0, Math.min(Number(input.score) || 0, 100)),
     status: allowedStatus(input.status),
     notes: cleanText(input.notes, 4000),
-    offerPrice: cleanText(input.offerPrice || "300€", 60),
-    packageName: cleanText(input.packageName || "Starter Website", 120),
+    offerPrice: cleanText(input.offerPrice || "1,490€", 60),
+    packageName: cleanText(input.packageName || "Complete Business Website", 120),
     nextFollowUp: cleanDateText(input.nextFollowUp),
     lastContacted: cleanDateText(input.lastContacted),
     source: cleanText(input.source || "manual", 80),
@@ -159,8 +159,8 @@ async function ensureBusinessSchema() {
     score INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'saved',
     notes TEXT NOT NULL DEFAULT '',
-    offer_price TEXT NOT NULL DEFAULT '300€',
-    package_name TEXT NOT NULL DEFAULT 'Starter Website',
+    offer_price TEXT NOT NULL DEFAULT '1,490€',
+    package_name TEXT NOT NULL DEFAULT 'Complete Business Website',
     next_follow_up TEXT NOT NULL DEFAULT '',
     last_contacted TEXT NOT NULL DEFAULT '',
     source TEXT NOT NULL DEFAULT 'manual',
@@ -180,8 +180,8 @@ async function ensureBusinessSchema() {
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS site_quality TEXT NOT NULL DEFAULT 'unknown'`;
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS site_notes TEXT NOT NULL DEFAULT ''`;
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS last_scanned_at TEXT NOT NULL DEFAULT ''`;
-  await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS offer_price TEXT NOT NULL DEFAULT '300€'`;
-  await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS package_name TEXT NOT NULL DEFAULT 'Starter Website'`;
+  await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS offer_price TEXT NOT NULL DEFAULT '1,490€'`;
+  await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS package_name TEXT NOT NULL DEFAULT 'Complete Business Website'`;
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS next_follow_up TEXT NOT NULL DEFAULT ''`;
   await db`ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS last_contacted TEXT NOT NULL DEFAULT ''`;
   await db`CREATE INDEX IF NOT EXISTS viewport_business_leads_status_idx ON viewport_business_leads(status)`;

@@ -74,8 +74,8 @@ CREATE TABLE IF NOT EXISTS viewport_business_leads (
   score INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'saved',
   notes TEXT NOT NULL DEFAULT '',
-  offer_price TEXT NOT NULL DEFAULT '300€',
-  package_name TEXT NOT NULL DEFAULT 'Starter Website',
+  offer_price TEXT NOT NULL DEFAULT '1,490€',
+  package_name TEXT NOT NULL DEFAULT 'Complete Business Website',
   next_follow_up TEXT NOT NULL DEFAULT '',
   last_contacted TEXT NOT NULL DEFAULT '',
   source TEXT NOT NULL DEFAULT 'manual',
@@ -95,8 +95,8 @@ ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS contact_status TEXT
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS site_quality TEXT NOT NULL DEFAULT 'unknown';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS site_notes TEXT NOT NULL DEFAULT '';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS last_scanned_at TEXT NOT NULL DEFAULT '';
-ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS offer_price TEXT NOT NULL DEFAULT '300€';
-ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS package_name TEXT NOT NULL DEFAULT 'Starter Website';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS offer_price TEXT NOT NULL DEFAULT '1,490€';
+ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS package_name TEXT NOT NULL DEFAULT 'Complete Business Website';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS next_follow_up TEXT NOT NULL DEFAULT '';
 ALTER TABLE viewport_business_leads ADD COLUMN IF NOT EXISTS last_contacted TEXT NOT NULL DEFAULT '';
 
@@ -248,3 +248,58 @@ CREATE INDEX IF NOT EXISTS viewport_business_messages_lead_idx ON viewport_busin
 CREATE INDEX IF NOT EXISTS viewport_business_inquiries_status_idx ON viewport_business_inquiries(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS viewport_business_audits_lead_idx ON viewport_business_audits(lead_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS viewport_business_search_runs_created_idx ON viewport_business_search_runs(created_at DESC);
+
+-- V8 client website operations and no-login support channel
+CREATE TABLE IF NOT EXISTS viewport_client_sites (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id TEXT NOT NULL UNIQUE,
+  project_name TEXT NOT NULL,
+  production_url TEXT NOT NULL DEFAULT '',
+  preview_url TEXT NOT NULL DEFAULT '',
+  domain TEXT NOT NULL DEFAULT '',
+  repository_url TEXT NOT NULL DEFAULT '',
+  lifecycle_status TEXT NOT NULL DEFAULT 'planning',
+  availability_status TEXT NOT NULL DEFAULT 'unknown',
+  maintenance_plan TEXT NOT NULL DEFAULT 'handoff',
+  domain_owner TEXT NOT NULL DEFAULT 'client',
+  hosting_owner TEXT NOT NULL DEFAULT 'client',
+  database_owner TEXT NOT NULL DEFAULT 'not_required',
+  source_owner TEXT NOT NULL DEFAULT 'client_after_final_payment',
+  primary_contact TEXT NOT NULL DEFAULT '',
+  support_token TEXT NOT NULL UNIQUE,
+  launched_at TIMESTAMPTZ,
+  maintenance_until TIMESTAMPTZ,
+  last_checked_at TIMESTAMPTZ,
+  last_http_status INTEGER,
+  last_response_ms INTEGER,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_client_requests (
+  id BIGSERIAL PRIMARY KEY,
+  client_site_id BIGINT NOT NULL REFERENCES viewport_client_sites(id) ON DELETE CASCADE,
+  lead_id TEXT NOT NULL,
+  request_type TEXT NOT NULL DEFAULT 'change',
+  status TEXT NOT NULL DEFAULT 'new',
+  priority TEXT NOT NULL DEFAULT 'normal',
+  channel TEXT NOT NULL DEFAULT 'support_form',
+  customer_name TEXT NOT NULL DEFAULT '',
+  customer_email TEXT NOT NULL DEFAULT '',
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_client_events (
+  id BIGSERIAL PRIMARY KEY,
+  client_site_id BIGINT NOT NULL REFERENCES viewport_client_sites(id) ON DELETE CASCADE,
+  lead_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS viewport_client_sites_status_idx ON viewport_client_sites(lifecycle_status, availability_status);
+CREATE INDEX IF NOT EXISTS viewport_client_requests_site_idx ON viewport_client_requests(client_site_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_client_events_site_idx ON viewport_client_events(client_site_id, created_at DESC);

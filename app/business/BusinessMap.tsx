@@ -102,6 +102,7 @@ export default function BusinessMap({ leads, selected, searchCenter, searchLabel
   const containerRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ pointerId: number; x: number; y: number; centerX: number; centerY: number; moved: boolean } | null>(null);
   const lastFitKeyRef = useRef("");
+  const wheelHandlerRef = useRef<(event: WheelEvent) => void>(() => {});
   const [size, setSize] = useState({ width: 900, height: 520 });
   const [center, setCenter] = useState<Center>({ lat: searchCenter.lat, lng: searchCenter.lng });
   const [zoom, setZoom] = useState(11);
@@ -167,6 +168,20 @@ export default function BusinessMap({ leads, selected, searchCenter, searchLabel
     setZoom(nextZoom);
   }
 
+  wheelHandlerRef.current = (event: WheelEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setZoomAt(zoom + (event.deltaY < 0 ? 1 : -1), event.clientX, event.clientY);
+  };
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+    const listener = (event: WheelEvent) => wheelHandlerRef.current(event);
+    node.addEventListener("wheel", listener, { passive: false });
+    return () => node.removeEventListener("wheel", listener);
+  }, []);
+
   function fitResults() {
     const fit = fitZoom(visibleLeads, size.width, size.height);
     if (!fit) return;
@@ -186,7 +201,7 @@ export default function BusinessMap({ leads, selected, searchCenter, searchLabel
         <div>
           <p className="badge">GREEN TERMINAL CLIENT MAP</p>
           <h2>Accurate terminal street map</h2>
-          <p className="muted small">Real streets, towns and cities rendered in the original neon-green terminal style · wheel zoom · drag · select a target</p>
+          <p className="muted small">Real streets, towns and cities in the neon-green terminal style · the mouse wheel stays inside the map · drag · select a target</p>
         </div>
         <div className="map-controls row">
           <button type="button" onClick={() => setZoomAt(zoom + 1)} aria-label="Zoom in">+</button>
@@ -202,10 +217,6 @@ export default function BusinessMap({ leads, selected, searchCenter, searchLabel
         className="slippy-map"
         role="application"
         aria-label="Interactive street map of businesses"
-        onWheel={(event) => {
-          event.preventDefault();
-          setZoomAt(zoom + (event.deltaY < 0 ? 1 : -1), event.clientX, event.clientY);
-        }}
         onDoubleClick={(event) => setZoomAt(zoom + 1, event.clientX, event.clientY)}
         onPointerDown={(event) => {
           if (event.button !== 0) return;
