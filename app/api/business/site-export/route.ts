@@ -126,24 +126,65 @@ export async function POST(req: NextRequest) {
     if (clean(body.website, 100)) return NextResponse.json({ ok: true });
     const startedAt = Number(body.startedAt || 0);
     if (startedAt && Date.now() - startedAt < 1200) return NextResponse.json({ ok: false, error: "Please try again." }, { status: 400 });
+
     const name = clean(body.name, 100);
     const email = clean(body.email, 180).replace(/[\\r\\n]/g, "");
     const phone = clean(body.phone, 40);
     const message = clean(body.message, 3000);
-    if (!name || !message || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) return NextResponse.json({ ok: false, error: "Please complete the required fields." }, { status: 400 });
+    if (!name || !message || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+      return NextResponse.json({ ok: false, error: "Please complete the required fields." }, { status: 400 });
+    }
+
+    const failures: string[] = [];
+    let delivered = false;
+
+    const dashboardUrl = process.env.DASHBOARD_INQUIRY_WEBHOOK || "";
+    const dashboardSecret = process.env.DASHBOARD_INQUIRY_SECRET || "";
+    const leadId = process.env.DASHBOARD_LEAD_ID || "";
+    if (dashboardUrl && dashboardSecret && leadId) {
+      try {
+        const response = await fetch(dashboardUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-inquiry-secret": dashboardSecret },
+          body: JSON.stringify({ leadId, name, email, phone, message, sourceSite: req.headers.get("origin") || "" }),
+          cache: "no-store",
+        });
+        if (response.ok) delivered = true;
+        else failures.push("dashboard CRM delivery failed");
+      } catch {
+        failures.push("dashboard CRM delivery failed");
+      }
+    }
+
     const apiKey = process.env.RESEND_API_KEY || "";
     const to = process.env.CONTACT_TO_EMAIL || "";
     const from = process.env.CONTACT_FROM_EMAIL || "Website <onboarding@resend.dev>";
-    if (!apiKey || !to) return NextResponse.json({ ok: false, error: "Contact form is not configured yet." }, { status: 503 });
-    const subject = \`Website enquiry from \${name}\`.replace(/[\\r\\n]/g, " ");
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: \`Bearer \${apiKey}\`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [to], reply_to: email, subject, text: \`Name: \${name}\\nEmail: \${email}\\nPhone: \${phone || "-"}\\n\\n\${message}\` }),
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) return NextResponse.json({ ok: false, error: result.message || "Email delivery failed." }, { status: 502 });
-    return NextResponse.json({ ok: true });
+    if (apiKey && to) {
+      try {
+        const subject = ("Website enquiry from " + name).replace(/[\\r\\n]/g, " ");
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from,
+            to: [to],
+            reply_to: email,
+            subject,
+            text: "Name: " + name + "\\nEmail: " + email + "\\nPhone: " + (phone || "-") + "\\n\\n" + message,
+          }),
+        });
+        if (response.ok) delivered = true;
+        else failures.push("email delivery failed");
+      } catch {
+        failures.push("email delivery failed");
+      }
+    }
+
+    if (!delivered) {
+      const configured = Boolean((dashboardUrl && dashboardSecret && leadId) || (apiKey && to));
+      return NextResponse.json({ ok: false, error: configured ? failures.join("; ") || "Message delivery failed." : "Contact form is not configured yet." }, { status: 503 });
+    }
+    return NextResponse.json({ ok: true, warnings: failures });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Message failed." }, { status: 500 });
   }
@@ -160,6 +201,7 @@ export async function POST(req: NextRequest) {
     const phone = cleanText(body.phone || "", 60);
     const email = cleanText(body.email || "", 180).replace(/[\r\n]/g, "");
     const mapsUrl = cleanText(body.mapsUrl || "", 600);
+    const leadId = cleanText(body.id || body.leadId || "", 300);
     const projectName = slug(name);
     const zip = new JSZip();
     zip.file("package.json", JSON.stringify({ name: projectName, version: "1.0.0", private: true, scripts: { dev: "next dev", build: "next build", start: "next start" }, dependencies: { next: "16.2.10", react: "19.2.0", "react-dom": "19.2.0" }, devDependencies: { "@types/node": "22.15.32", "@types/react": "19.2.0", "@types/react-dom": "19.2.0", typescript: "5.9.2" }, overrides: { postcss: "8.5.10" } }, null, 2));
@@ -170,8 +212,8 @@ export async function POST(req: NextRequest) {
     zip.file("next-env.d.ts", `/// <reference types="next" />\n/// <reference types="next/image-types/global" />\n`);
     zip.file("tsconfig.json", JSON.stringify({ compilerOptions: { target: "ES2017", lib: ["dom", "dom.iterable", "esnext"], allowJs: true, skipLibCheck: true, strict: true, noEmit: true, esModuleInterop: true, module: "esnext", moduleResolution: "bundler", resolveJsonModule: true, isolatedModules: true, jsx: "react-jsx", incremental: true, plugins: [{ name: "next" }], paths: { "@/*": ["./*"] } }, include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"], exclude: ["node_modules"] }, null, 2));
     zip.file(".gitignore", `.next/\nnode_modules/\n.env*\n!.env.example\n`);
-    zip.file(".env.example", `RESEND_API_KEY=re_xxxxxxxxx\nCONTACT_TO_EMAIL=${email || "client@example.com"}\nCONTACT_FROM_EMAIL=Website <website@your-verified-domain.fi>\n`);
-    zip.file("README.md", `# ${name}\n\nProduction-ready Next.js starter generated by Private Terminal Dashboard.\n\n## Run\n\n1. Install Node.js 22.\n2. Run \`npm install\`.\n3. Copy \`.env.example\` to \`.env.local\`.\n4. Add a Resend API key and the email that should receive contact requests.\n5. Run \`npm run dev\`.\n6. Replace example service text and photo boxes.\n7. Deploy to Vercel and add the same environment variables there.\n\nThe contact form posts to \`/api/contact\`, validates input, includes a spam honeypot, and sends email with Resend.\n`);
+    zip.file(".env.example", `# Save every form submission in the private dashboard CRM\nDASHBOARD_INQUIRY_WEBHOOK=https://YOUR-DASHBOARD.vercel.app/api/business/inquiries/public\nDASHBOARD_INQUIRY_SECRET=use-the-same-long-secret-as-the-dashboard\nDASHBOARD_LEAD_ID=${leadId || "paste-the-dashboard-lead-id"}\n\n# Optional email delivery through Resend\nRESEND_API_KEY=re_xxxxxxxxx\nCONTACT_TO_EMAIL=${email || "client@example.com"}\nCONTACT_FROM_EMAIL=Website <website@your-verified-domain.fi>\n`);
+    zip.file("README.md", `# ${name}\n\nProduction-ready Next.js starter generated by Private Terminal Dashboard.\n\n## Run\n\n1. Install Node.js 22.\n2. Run \`npm install\`.\n3. Copy \`.env.example\` to \`.env.local\`.\n4. Set \`DASHBOARD_INQUIRY_WEBHOOK\`, \`DASHBOARD_INQUIRY_SECRET\`, and \`DASHBOARD_LEAD_ID\` so every submission appears in the dashboard CRM.\n5. Optionally add the Resend variables for a second copy by email.\n6. Run \`npm run dev\`.\n7. Replace the example service text and photo boxes.\n8. Deploy to Vercel and add the same environment variables there.\n\nThe form posts to \`/api/contact\`, validates input, includes a spam honeypot, saves inquiries to the dashboard, and can also send with Resend. It succeeds when at least one configured delivery path succeeds.\n`);
     const buffer = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 6 } });
     return new NextResponse(new Blob([buffer as BlobPart]), { status: 200, headers: { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${projectName}.zip"`, "Cache-Control": "no-store" } });
   } catch (error: any) {

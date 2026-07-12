@@ -4,9 +4,12 @@ import { canAccess, getSession } from "@/lib/auth";
 import { devWorkspaceEnabled } from "@/lib/devGuard";
 import "./globals.css";
 
+const serviceName = process.env.NEXT_PUBLIC_SERVICE_NAME || "Jonas Web Studio";
+
 export const metadata: Metadata = {
-  title: "Black Terminal Viewport",
-  description: "Private terminal dashboard for chat, browsing, local leads, Halo Earth strategy, email, and mobile coding",
+  metadataBase: process.env.APP_BASE_URL ? new URL(process.env.APP_BASE_URL) : undefined,
+  title: { default: serviceName, template: `%s | ${serviceName}` },
+  description: "Business websites, deployment and managed support.",
 };
 
 export const viewport: Viewport = {
@@ -23,8 +26,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <header className="topbar">
-          <Link className="brand" href={chatOnly ? "/chat" : "/"}>{chatOnly ? "chat" : "black viewport"}</Link>
+        <header className="topbar public-topbar">
+          <Link className="brand" href="/">{serviceName.toLowerCase()}</Link>
           <nav className="nav" aria-label="Main navigation">
             {session ? (
               chatOnly ? (
@@ -34,12 +37,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </>
               ) : (
                 <>
-                  {canAccess(session, "chan") && <Link href="/chan">4chan</Link>}
-                  {canAccess(session, "reddit") && <Link href="/reddit">Reddit</Link>}
-                  {canAccess(session, "youtube") && <Link href="/youtube">YouTube</Link>}
-                  {canAccess(session, "business") && <Link href="/business">Money</Link>}
-                  {canAccess(session, "game") && <Link href="/game">Game</Link>}
+                  <Link href="/">Public site</Link>
+                  <Link href="/dashboard">Dashboard</Link>
+                  {canAccess(session, "business") && <Link href="/business">Business</Link>}
                   {canAccess(session, "email") && <Link href="/email">Email</Link>}
+                  {canAccess(session, "youtube") && <Link href="/youtube">YouTube</Link>}
                   {showDev && canAccess(session, "dev") && <Link href="/dev">Dev</Link>}
                   <Link href="/chat">Chat</Link>
                   <span className="userpill">{session.username}:admin</span>
@@ -47,7 +49,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </>
               )
             ) : (
-              <Link href="/login">login</Link>
+              <>
+                <a href="/#services">Services</a>
+                <a href="/#estimate">Estimate</a>
+                <a href="/#contact">Contact</a>
+                <Link href="/login">Private login</Link>
+              </>
             )}
           </nav>
         </header>

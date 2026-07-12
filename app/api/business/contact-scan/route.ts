@@ -361,17 +361,64 @@ async function scanWebsite(raw: string) {
     }
   }
 
-  const combinedHtml = htmlPages.map((entry) => entry.html).join("\n");
-  const emails = findEmails(combinedHtml, start.hostname, structured);
-  const phones = findPhones(combinedHtml, structured);
+  let combinedHtml = htmlPages.map((entry) => entry.html).join("\n");
+  let emails = findEmails(combinedHtml, start.hostname, structured);
+  let phones = findPhones(combinedHtml, structured);
   const contactPageLinks = allHttpLinks.filter((value) => {
     try {
       const url = new URL(value);
       return sameSite(start, url) && CONTACT_WORDS.test(url.pathname + url.search);
     } catch { return false; }
   });
-  const contactForms = uniq([...formPages, ...contactPageLinks, ...formEndpoints], 12);
-  const socials = socialLinks([...allSocialLinks, ...structured.socials, ...structured.urls]);
+  let contactForms = uniq([...formPages, ...contactPageLinks, ...formEndpoints], 12);
+  let socials = socialLinks([...allSocialLinks, ...structured.socials, ...structured.urls]);
+  let renderedFallback = false;
+
+  // Optional real-browser fallback for sites that render all contact details with JavaScript.
+  if (!emails.length && !phones.length && !contactForms.length && process.env.BROWSERLESS_TOKEN) {
+    try {
+      const browserlessBase = (process.env.BROWSERLESS_BASE_URL || "https://production-sfo.browserless.io").replace(/\/$/, "");
+      const response = await fetch(`${browserlessBase}/content?token=${encodeURIComponent(process.env.BROWSERLESS_TOKEN)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
+        body: JSON.stringify({ url: start.toString(), waitForTimeout: 2500, gotoOptions: { waitUntil: "networkidle2", timeout: 18000 }, rejectResourceTypes: ["image", "media", "font"] }),
+        signal: AbortSignal.timeout(25000),
+      });
+      if (response.ok) {
+        const rendered = (await response.text()).slice(0, 900_000);
+        if (rendered) {
+          renderedFallback = true;
+          combinedHtml += `\n${rendered}`;
+          const renderedStructured = extractStructured(rendered);
+          structured.emails.push(...renderedStructured.emails);
+          structured.phones.push(...renderedStructured.phones);
+          structured.urls.push(...renderedStructured.urls);
+          structured.socials.push(...renderedStructured.socials);
+          const renderedHrefs = extractHrefs(rendered);
+          const renderedLinks = renderedHrefs.map((href) => absolute(start, href)).filter((url): url is URL => Boolean(url));
+          const renderedForms = extractContactForms(rendered, start);
+          emails = findEmails(combinedHtml, start.hostname, structured);
+          phones = findPhones(combinedHtml, structured);
+          contactForms = uniq([...contactForms, ...renderedForms.pageUrls, ...renderedForms.endpoints, ...renderedLinks.filter((url) => sameSite(start, url) && CONTACT_WORDS.test(url.pathname + url.search)).map(String)], 18);
+          socials = socialLinks([...allSocialLinks, ...structured.socials, ...structured.urls, ...renderedLinks.filter((url) => !sameSite(start, url)).map(String)]);
+          pages.push({
+            url: start.toString(),
+            status: 200,
+            title: extractTitle(rendered),
+            bytes: Buffer.byteLength(rendered),
+            responseMs: 0,
+            hasViewport: /<meta[^>]+name=["']viewport["']/i.test(rendered),
+            hasMetaDescription: /<meta[^>]+name=["']description["']/i.test(rendered),
+            hasH1: /<h1\b[^>]*>[\s\S]*?<\/h1>/i.test(rendered),
+            hasContactWords: CONTACT_WORDS.test(rendered),
+            hasForm: renderedForms.pageUrls.length > 0,
+            hasOldMarkup: false,
+          });
+        }
+      }
+    } catch {}
+  }
+
   const quality = qualityFromPages(start, pages, emails, contactForms, phones);
   const contactStatus = emails.length ? "email" : contactForms.length ? "form" : phones.length ? "phone" : (socials.facebookUrl || socials.instagramUrl || socials.whatsappUrl) ? "social" : "website";
 
@@ -392,6 +439,7 @@ async function scanWebsite(raw: string) {
     whatsappUrl: socials.whatsappUrl,
     messengerUrl: socials.messengerUrl,
     contactStatus,
+    renderedFallback,
     pagesScanned: pages,
     ...quality,
     scannedAt: new Date().toISOString(),
@@ -413,8 +461,8 @@ export async function POST(req: NextRequest) {
   try {
     requireAdmin(req);
     const body = await req.json().catch(() => ({}));
-    const items = Array.isArray(body?.items) ? body.items.slice(0, 8) : [];
-    if (!items.length) return jsonError("items must contain 1-4 websites", 400);
+    const items = Array.isArray(body?.items) ? body.items.slice(0, 12) : [];
+    if (!items.length) return jsonError("items must contain 1-12 websites", 400);
     const results = await Promise.all(items.map(async (item: any) => {
       const id = String(item?.id || "").slice(0, 200);
       const url = String(item?.url || "").trim();

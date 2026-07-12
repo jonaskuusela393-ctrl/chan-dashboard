@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="chan-dashboard-export.zip"`,
+        "Content-Disposition": `attachment; filename="website-business-dashboard-export.zip"`,
         "Cache-Control": "no-store",
       },
     });

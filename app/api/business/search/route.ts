@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authStatus, requireAdmin } from "@/lib/auth";
 import { cleanText, type BusinessLead } from "@/lib/localStore";
+import { runBusinessAction } from "@/lib/businessSuite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -183,6 +184,28 @@ function restrictionRectangle(lat: number, lng: number, radius: number) {
   };
 }
 
+function geographicGrid(lat: number, lng: number, radius: number, size: number) {
+  const n = Math.max(1, Math.min(Math.trunc(size), 4));
+  if (n === 1 || !Number.isFinite(lat) || !Number.isFinite(lng)) return [{ lat, lng, radius, label: "center" }];
+  const span = radius * 0.78;
+  const cellRadius = Math.max(700, Math.min(50000, (radius / n) * 1.55));
+  const cos = Math.max(0.15, Math.cos((lat * Math.PI) / 180));
+  const points: Array<{ lat: number; lng: number; radius: number; label: string }> = [];
+  for (let y = 0; y < n; y += 1) {
+    for (let x = 0; x < n; x += 1) {
+      const northMeters = n === 1 ? 0 : -span + (2 * span * y) / (n - 1);
+      const eastMeters = n === 1 ? 0 : -span + (2 * span * x) / (n - 1);
+      points.push({
+        lat: Math.max(-89, Math.min(89, lat + northMeters / 111_320)),
+        lng: Math.max(-179.999, Math.min(179.999, lng + eastMeters / (111_320 * cos))),
+        radius: cellRadius,
+        label: `${y + 1}/${x + 1}`,
+      });
+    }
+  }
+  return points;
+}
+
 async function googleTextSearch({ key, textQuery, lat, lng, radius, restrict, pageToken }: {
   key: string;
   textQuery: string;
@@ -233,42 +256,60 @@ export async function GET(req: NextRequest) {
     const restrict = req.nextUrl.searchParams.get("restrict") !== "0";
     const requestedPages = Number(req.nextUrl.searchParams.get("pages") || (deep ? 3 : 1));
     const requestedVariants = Number(req.nextUrl.searchParams.get("variants") || (deep ? 5 : 2));
+    const requestedGrid = Number(req.nextUrl.searchParams.get("grid") || (deep ? 2 : 1));
     const pagesPerQuery = Math.max(1, Math.min(requestedPages, 3));
     const variants = queryVariants(q, Math.max(1, Math.min(requestedVariants, 6)));
+    const grid = Math.max(1, Math.min(Math.trunc(requestedGrid), 4));
+    const searchPoints = geographicGrid(lat, lng, radius, grid);
+    const requestBudget = Math.max(1, Math.min(Number(req.nextUrl.searchParams.get("budget") || 90), 120));
     const key = process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_PLACES_API_KEY || "";
 
     if (!key || demo) {
       const leads = Array.from({ length: 24 }, (_, i) => demoLead(i, q || "business", location, Number.isFinite(lat) ? lat : 60.25, Number.isFinite(lng) ? lng : 24.07));
-      return NextResponse.json({ ok: true, demo: true, query: q, queries: variants, location, leads, count: leads.length, apiRequests: 0, warning: "Set GOOGLE_MAPS_API_KEY to use live Google Places data." });
+      return NextResponse.json({ ok: true, demo: true, query: q, queries: variants, location, leads, count: leads.length, apiRequests: 0, grid, warning: "Set GOOGLE_MAPS_API_KEY to use live Google Places data." });
     }
 
     const merged = new Map<string, BusinessLead>();
     const errors: string[] = [];
     let apiRequests = 0;
-    for (const variant of variants) {
-      let pageToken = "";
-      const textQuery = `${variant} in ${location}`;
-      for (let page = 0; page < pagesPerQuery; page += 1) {
-        try {
-          const data = await googleTextSearch({ key, textQuery, lat, lng, radius, restrict, pageToken: pageToken || undefined });
-          apiRequests += 1;
-          for (const place of Array.isArray(data.places) ? data.places : []) {
-            if (place.businessStatus && place.businessStatus !== "OPERATIONAL") continue;
-            const lead = normalize(place, variant);
-            const old = merged.get(lead.id);
-            if (!old || lead.score > old.score) merged.set(lead.id, old ? { ...old, ...lead, siteNotes: `${old.siteNotes}; also matched ${variant}` } : lead);
+    outer: for (const point of searchPoints) {
+      for (const variant of variants) {
+        let pageToken = "";
+        const textQuery = `${variant} in ${location}`;
+        for (let page = 0; page < pagesPerQuery; page += 1) {
+          if (apiRequests >= requestBudget) break outer;
+          try {
+            const data = await googleTextSearch({ key, textQuery, lat: point.lat, lng: point.lng, radius: point.radius, restrict, pageToken: pageToken || undefined });
+            apiRequests += 1;
+            for (const place of Array.isArray(data.places) ? data.places : []) {
+              if (place.businessStatus && place.businessStatus !== "OPERATIONAL") continue;
+              const lead = normalize(place, variant);
+              const old = merged.get(lead.id);
+              const matchNote = `grid ${point.label}, ${variant}`;
+              if (!old || lead.score > old.score) merged.set(lead.id, old ? { ...old, ...lead, siteNotes: `${old.siteNotes}; also matched ${matchNote}` } : { ...lead, siteNotes: `${lead.siteNotes}; ${matchNote}` });
+            }
+            pageToken = cleanText(data.nextPageToken || "", 2000);
+            if (!pageToken) break;
+          } catch (error: any) {
+            errors.push(`${variant} @ ${point.label}: ${error?.message || "search failed"}`);
+            break;
           }
-          pageToken = cleanText(data.nextPageToken || "", 2000);
-          if (!pageToken) break;
-        } catch (error: any) {
-          errors.push(`${variant}: ${error?.message || "search failed"}`);
-          break;
         }
       }
     }
 
     const leads = Array.from(merged.values()).sort((a, b) => b.score - a.score);
     if (!leads.length && errors.length) return jsonError(errors.join(" | "), 502);
+    await runBusinessAction("search.save", {
+      query: q,
+      location,
+      bounds: { lat, lng, radius, grid, restrict },
+      status: apiRequests >= requestBudget ? "budget_reached" : errors.length ? "partial" : "complete",
+      foundCount: leads.length,
+      scannedCount: 0,
+      apiRequests,
+      cursor: { pagesPerQuery, variants, gridPoints: searchPoints.length, requestBudget },
+    }).catch(() => undefined);
     return NextResponse.json({
       ok: true,
       demo: false,
@@ -279,6 +320,10 @@ export async function GET(req: NextRequest) {
       count: leads.length,
       apiRequests,
       pagesPerQuery,
+      grid,
+      gridPoints: searchPoints.length,
+      requestBudget,
+      budgetReached: apiRequests >= requestBudget,
       restrict,
       partialErrors: errors,
     });

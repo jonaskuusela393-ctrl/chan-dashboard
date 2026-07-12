@@ -106,3 +106,145 @@ CREATE INDEX IF NOT EXISTS viewport_business_leads_score_idx ON viewport_busines
 CREATE INDEX IF NOT EXISTS viewport_business_leads_updated_idx ON viewport_business_leads(updated_at DESC);
 CREATE INDEX IF NOT EXISTS viewport_business_leads_contact_status_idx ON viewport_business_leads(contact_status);
 CREATE INDEX IF NOT EXISTS viewport_business_leads_site_quality_idx ON viewport_business_leads(site_quality);
+
+-- Business operations suite: multiple contacts, timeline, tasks, proposals,
+-- accounting records, Gmail/SMS history, website inquiries, audits, and searches.
+CREATE TABLE IF NOT EXISTS viewport_business_contacts (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  value TEXT NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
+  source_url TEXT NOT NULL DEFAULT '',
+  confidence INTEGER NOT NULL DEFAULT 50,
+  verified BOOLEAN NOT NULL DEFAULT FALSE,
+  is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(lead_id, kind, value)
+);
+CREATE TABLE IF NOT EXISTS viewport_business_activities (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_business_tasks (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL,
+  due_at TIMESTAMPTZ,
+  priority TEXT NOT NULL DEFAULT 'normal',
+  done BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_business_proposals (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft',
+  currency TEXT NOT NULL DEFAULT 'EUR',
+  setup_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  monthly_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  deposit_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  valid_until DATE,
+  delivery_days INTEGER NOT NULL DEFAULT 14,
+  revisions INTEGER NOT NULL DEFAULT 2,
+  line_items JSONB NOT NULL DEFAULT '[]'::jsonb,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_business_transactions (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'invoice',
+  status TEXT NOT NULL DEFAULT 'unpaid',
+  amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'EUR',
+  due_at DATE,
+  paid_at TIMESTAMPTZ,
+  description TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_business_messages (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id TEXT NOT NULL DEFAULT '',
+  channel TEXT NOT NULL,
+  direction TEXT NOT NULL,
+  sender TEXT NOT NULL DEFAULT '',
+  recipient TEXT NOT NULL DEFAULT '',
+  subject TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  external_id TEXT NOT NULL DEFAULT '',
+  thread_id TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT '',
+  unread BOOLEAN NOT NULL DEFAULT FALSE,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_business_inquiries (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  message TEXT NOT NULL DEFAULT '',
+  source_site TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'new',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_business_audits (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id TEXT NOT NULL DEFAULT '',
+  url TEXT NOT NULL,
+  strategy TEXT NOT NULL DEFAULT 'mobile',
+  score INTEGER NOT NULL DEFAULT 0,
+  performance INTEGER,
+  accessibility INTEGER,
+  seo INTEGER,
+  best_practices INTEGER,
+  issues JSONB NOT NULL DEFAULT '[]'::jsonb,
+  facts JSONB NOT NULL DEFAULT '{}'::jsonb,
+  screenshot TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_business_search_runs (
+  id BIGSERIAL PRIMARY KEY,
+  query TEXT NOT NULL,
+  location TEXT NOT NULL DEFAULT '',
+  bounds JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status TEXT NOT NULL DEFAULT 'running',
+  found_count INTEGER NOT NULL DEFAULT 0,
+  scanned_count INTEGER NOT NULL DEFAULT 0,
+  api_requests INTEGER NOT NULL DEFAULT 0,
+  cursor JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_gmail_connection (
+  id TEXT PRIMARY KEY DEFAULT 'primary',
+  email TEXT NOT NULL DEFAULT '',
+  access_token TEXT NOT NULL DEFAULT '',
+  refresh_token TEXT NOT NULL DEFAULT '',
+  expires_at TIMESTAMPTZ,
+  scope TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS viewport_business_contacts_lead_idx ON viewport_business_contacts(lead_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_business_activities_lead_idx ON viewport_business_activities(lead_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_business_tasks_due_idx ON viewport_business_tasks(done, due_at);
+CREATE INDEX IF NOT EXISTS viewport_business_proposals_lead_idx ON viewport_business_proposals(lead_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_business_transactions_status_idx ON viewport_business_transactions(status, due_at);
+CREATE UNIQUE INDEX IF NOT EXISTS viewport_business_messages_external_unique ON viewport_business_messages(channel, external_id) WHERE external_id <> '';
+CREATE INDEX IF NOT EXISTS viewport_business_messages_thread_idx ON viewport_business_messages(channel, thread_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_business_messages_lead_idx ON viewport_business_messages(lead_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_business_inquiries_status_idx ON viewport_business_inquiries(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_business_audits_lead_idx ON viewport_business_audits(lead_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_business_search_runs_created_idx ON viewport_business_search_runs(created_at DESC);

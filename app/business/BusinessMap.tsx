@@ -184,9 +184,9 @@ export default function BusinessMap({ leads, selected, searchCenter, searchLabel
     <section className="terminal-map panel stack">
       <div className="spread map-head">
         <div>
-          <p className="badge">STREET-LEVEL CLIENT MAP</p>
-          <h2>Accurate business locations</h2>
-          <p className="muted small">OpenStreetMap streets and cities · wheel/pinch-style controls · drag · click a business pin</p>
+          <p className="badge">GREEN TERMINAL CLIENT MAP</p>
+          <h2>Accurate terminal street map</h2>
+          <p className="muted small">Real streets, towns and cities rendered in the original neon-green terminal style · wheel zoom · drag · select a target</p>
         </div>
         <div className="map-controls row">
           <button type="button" onClick={() => setZoomAt(zoom + 1)} aria-label="Zoom in">+</button>

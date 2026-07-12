@@ -4,6 +4,6 @@ import LoginClient from "./LoginClient";
 
 export default async function LoginPage() {
   const session = await getSession();
-  if (session) redirect("/");
+  if (session) redirect(session.role === "user" ? "/chat" : "/dashboard");
   return <LoginClient />;
 }
