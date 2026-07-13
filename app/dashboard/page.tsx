@@ -13,7 +13,7 @@ const modules = [
   { key: "business" as const, href: "/business", icon: "◎", eyebrow: "SALES + DELIVERY", title: "Business operations", text: "Find leads, audit websites, manage the pipeline, send proposals, track client sites and record revenue.", action: "Open business operations" },
   { key: "email" as const, href: "/email", icon: "✉", eyebrow: "COMMUNICATION", title: "Email inbox", text: "Read Gmail threads, reply, open attachments and connect conversations to the correct company record.", action: "Open inbox" },
   { key: "chat" as const, href: "/chat", icon: "▣", eyebrow: "PRIVATE", title: "Team chat", text: "Private two-account messaging with presence, incremental updates and protected file attachments.", action: "Open chat" },
-  { key: "youtube" as const, href: "/youtube", icon: "▷", eyebrow: "RESEARCH", title: "Video research", text: "Search YouTube in a text-first view and open only the videos you choose.", action: "Open research" },
+  { key: "youtube" as const, href: "/personal", icon: "◉", eyebrow: "ADMIN ONLY", title: "Personal tools", text: "Private YouTube and 4chan viewers kept separate from customer work and business operations.", action: "Open personal tools" },
   { key: "dev" as const, href: "/dev", icon: "⌘", eyebrow: "LOCAL ONLY", title: "Development workspace", text: "Project files, builds, logs and ZIP exports. Automatically unavailable on Vercel production.", action: "Open workspace" },
 ];
 

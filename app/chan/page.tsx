@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 
-export default async function YouTubePage() {
+export default async function ChanPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "admin") redirect("/chat");
-  redirect("/personal?tab=youtube");
+  redirect("/personal?tab=chan");
 }

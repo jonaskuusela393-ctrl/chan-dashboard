@@ -68,7 +68,7 @@ export default function SiteHeader({ serviceName, session, access, showDev }: { 
           {access.business && <Link href="/business">Business</Link>}
           {access.email && <Link href="/email">Inbox</Link>}
           <Link href="/chat">Chat</Link>
-          {access.youtube && <Link href="/youtube">Research</Link>}
+          {access.youtube && <Link href="/personal">Personal</Link>}
           {showDev && access.dev && <Link href="/dev">Workspace</Link>}
           <Link href="/">Public site</Link>
         </>}

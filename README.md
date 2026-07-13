@@ -68,3 +68,12 @@ git add .
 git commit -m "Jonas"
 git push
 ```
+
+## V10 personal tools
+
+The administrator has a private `/personal` page containing:
+
+- YouTube text research
+- The restored read-only 4chan viewport
+
+Customers cannot register or access private pages. The second private account remains restricted to Chat. The main interface is monochrome black/white; the accurate business map intentionally retains its neon-green terminal treatment.
