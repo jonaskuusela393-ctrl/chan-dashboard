@@ -72,7 +72,7 @@ export default function ChatClient({ username, role }: { username: string; role:
   const [presence, setPresence] = useState<Presence[]>([]);
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<FileList | null>(null);
-  const [status, setStatus] = useState("secure chat ready");
+  const [status, setStatus] = useState("Private chat ready");
   const [loading, setLoading] = useState(false);
   const [stickToBottom, setStickToBottom] = useState(true);
 
@@ -200,7 +200,7 @@ export default function ChatClient({ username, role }: { username: string; role:
         <div className="spread">
           <div>
             <p className="badge">PRIVATE CHAT</p>
-            <h1 className="terminal-title">Terminal chat</h1>
+            <h1 className="terminal-title">Private team chat</h1>
             <p className="muted">
               Signed in as {username}:{role}. Chat stays inside its own window so the
               page does not jump around.
@@ -209,10 +209,10 @@ export default function ChatClient({ username, role }: { username: string; role:
 
           <div className="row">
             <button onClick={() => load()} disabled={loading}>
-              sync
+              Sync
             </button>
             <button onClick={() => scrollToBottom("smooth")}>
-              latest
+              Latest
             </button>
           </div>
         </div>
@@ -240,7 +240,7 @@ export default function ChatClient({ username, role }: { username: string; role:
             <div>
               <h2>Messages</h2>
               <p className="muted small">
-                {messages.length} loaded · {stickToBottom ? "following latest" : "paused while reading old messages"}
+                {messages.length} loaded · {stickToBottom ? "following Latest" : "paused while reading old messages"}
               </p>
             </div>
 
@@ -249,7 +249,7 @@ export default function ChatClient({ username, role }: { username: string; role:
                 setStickToBottom(true);
                 scrollToBottom("smooth");
               }}>
-                jump to latest
+                jump to Latest
               </button>
             )}
           </div>

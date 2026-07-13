@@ -4,51 +4,34 @@ import { canAccess, getSession } from "@/lib/auth";
 import { devWorkspaceEnabled } from "@/lib/devGuard";
 
 export const metadata = {
-  title: "Operations Dashboard",
-  description: "Private operations dashboard for website sales, email, chat and development.",
+  title: "Operations overview",
+  description: "Private operations dashboard for leads, clients, communication and website delivery.",
+  robots: { index: false, follow: false },
 };
+
+const modules = [
+  { key: "business" as const, href: "/business", icon: "◎", eyebrow: "SALES + DELIVERY", title: "Business operations", text: "Find leads, audit websites, manage the pipeline, send proposals, track client sites and record revenue.", action: "Open business operations" },
+  { key: "email" as const, href: "/email", icon: "✉", eyebrow: "COMMUNICATION", title: "Email inbox", text: "Read Gmail threads, reply, open attachments and connect conversations to the correct company record.", action: "Open inbox" },
+  { key: "chat" as const, href: "/chat", icon: "▣", eyebrow: "PRIVATE", title: "Team chat", text: "Private two-account messaging with presence, incremental updates and protected file attachments.", action: "Open chat" },
+  { key: "youtube" as const, href: "/youtube", icon: "▷", eyebrow: "RESEARCH", title: "Video research", text: "Search YouTube in a text-first view and open only the videos you choose.", action: "Open research" },
+  { key: "dev" as const, href: "/dev", icon: "⌘", eyebrow: "LOCAL ONLY", title: "Development workspace", text: "Project files, builds, logs and ZIP exports. Automatically unavailable on Vercel production.", action: "Open workspace" },
+];
 
 export default async function DashboardHome() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role === "user") redirect("/chat");
-
   const showDev = devWorkspaceEnabled();
-  const modules = [
-    { key: "business" as const, href: "/business", badge: "BUSINESS", title: "Website sales command", text: "Find leads, scan contacts, audit websites, read replies, send SMS, manage proposals, inquiries and revenue." },
-    { key: "email" as const, href: "/email", badge: "INBOX", title: "Email and outreach", text: "Read Gmail conversations, reply, send outreach and connect communication to CRM companies." },
-    { key: "youtube" as const, href: "/youtube", badge: "YOUTUBE", title: "Text-first research", text: "Search videos without thumbnails and open the player only when needed." },
-    { key: "chat" as const, href: "/chat", badge: "CHAT", title: "Private chat", text: "Two accounts, online status, incremental updates and private Vercel Blob attachments." },
-    { key: "dev" as const, href: "/dev", badge: "DEV", title: "Local development workspace", text: "Local-only project files, build tools, logs and ZIP export. Disabled on Vercel production." },
-  ];
+  const visible = modules.filter((item) => canAccess(session, item.key) && (item.key !== "dev" || showDev));
 
-  return (
-    <div className="stack">
-      <section className="panel stack hero-grid">
-        <div className="stack">
-          <p className="badge">PRIVATE OPERATIONS</p>
-          <h1>Website service command center</h1>
-          <p className="muted">Signed in as {session.username}. Public visitors see the service landing page; this private area manages leads, communication, delivery and revenue.</p>
-          <div className="row">
-            <Link className="buttonlike" href="/business">open business command</Link>
-            <Link className="buttonlike" href="/">view public website</Link>
-            <Link className="buttonlike" href="/chat">open chat</Link>
-          </div>
-        </div>
-        <div className="mini-radar" aria-hidden="true">
-          <div className="radar-globe" />
-          <p className="small muted">PUBLIC LEADS → CRM → PROPOSAL → BUILD → CARE</p>
-        </div>
-      </section>
-      <section className="grid">
-        {modules.filter((item) => canAccess(session, item.key) && (item.key !== "dev" || showDev)).map((item) => (
-          <Link className="card stack" href={item.href} key={item.href}>
-            <span className="badge">{item.badge}</span>
-            <h2>{item.title}</h2>
-            <p className="muted">{item.text}</p>
-          </Link>
-        ))}
-      </section>
-    </div>
-  );
+  return <div className="dashboard-page stack">
+    <section className="dashboard-hero">
+      <div className="dashboard-hero-copy"><p className="eyebrow">PRIVATE OPERATIONS</p><h1>Everything needed to find, build and manage client websites.</h1><p>Public visitors see a professional service website. This private area keeps leads, messages, projects, ownership, support requests and money connected.</p><div className="public-actions"><Link className="public-primary" href="/business">Open business operations</Link><Link className="public-secondary" href="/">View public website</Link></div></div>
+      <div className="operations-flow" aria-label="Business workflow"><div><span>01</span><strong>Find</strong><small>business leads</small></div><i>→</i><div><span>02</span><strong>Win</strong><small>proposal and reply</small></div><i>→</i><div><span>03</span><strong>Build</strong><small>website delivery</small></div><i>→</i><div><span>04</span><strong>Care</strong><small>support and revenue</small></div></div>
+    </section>
+
+    <section className="dashboard-summary" aria-label="Session information"><div><span className="status-dot online"/><p><small>SESSION</small><strong>{session.username}</strong></p></div><div><span className="status-dot online"/><p><small>ACCESS</small><strong>Administrator</strong></p></div><div><span className="status-dot neutral"/><p><small>PUBLIC SITE</small><strong>Separate from operations</strong></p></div></section>
+
+    <section className="module-grid">{visible.map((item) => <Link className="module-card" href={item.href} key={item.href}><div className="module-card-top"><span className="module-icon">{item.icon}</span><span className="eyebrow">{item.eyebrow}</span></div><h2>{item.title}</h2><p>{item.text}</p><span className="module-action">{item.action}<b>→</b></span></Link>)}</section>
+  </div>;
 }

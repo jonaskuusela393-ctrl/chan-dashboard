@@ -6,12 +6,12 @@ import PublicLandingClient from "./PublicLandingClient";
 const config = getPublicSiteConfig();
 
 export const metadata: Metadata = {
-  title: "Business websites built, launched and managed",
-  description: "Clear website packages for small and medium businesses: design, development, deployment, domain connection, forms and optional managed support.",
+  title: "Websites that help businesses get found and contacted",
+  description: "Professional Finnish business websites with clear pricing, documented ownership, complete launch and optional ongoing support.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: `${config.serviceName} — business websites built and managed`,
-    description: "Get a clear project estimate, a complete website build and optional ongoing support.",
+    title: `${config.serviceName} — professional business websites`,
+    description: "Get a clear estimate, a complete website build and optional ongoing support without technical confusion.",
     type: "website",
   },
 };

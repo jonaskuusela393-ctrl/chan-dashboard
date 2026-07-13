@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export type PublicLanguage = "en" | "fi";
@@ -36,19 +35,12 @@ export function usePublicLanguage() {
   return language;
 }
 
-export default function PublicHeaderNav({ loggedIn }: { loggedIn: boolean }) {
+export function LanguageToggle() {
   const language = usePublicLanguage();
-  const fi = language === "fi";
   return (
-    <nav className="nav public-nav" aria-label={fi ? "Päänavigaatio" : "Main navigation"}>
-      <a href="/#services">{fi ? "Palvelut" : "Services"}</a>
-      <a href="/#pricing">{fi ? "Hinnat" : "Pricing"}</a>
-      <a href="/#estimate">{fi ? "Hinta-arvio" : "Estimate"}</a>
-      <a href="/#contact">{fi ? "Yhteys" : "Contact"}</a>
-      <button className="language-button" type="button" onClick={() => setPublicLanguage(fi ? "en" : "fi")} aria-label={fi ? "Switch to English" : "Vaihda suomeksi"}>
-        {fi ? "EN" : "FI"}
-      </button>
-      {loggedIn && <Link href="/dashboard">{fi ? "Hallinta" : "Dashboard"}</Link>}
-    </nav>
+    <div className="language-switch" role="group" aria-label={language === "fi" ? "Valitse kieli" : "Choose language"}>
+      <button type="button" className={language === "fi" ? "active" : ""} onClick={() => setPublicLanguage("fi")} aria-pressed={language === "fi"}>FI</button>
+      <button type="button" className={language === "en" ? "active" : ""} onClick={() => setPublicLanguage("en")} aria-pressed={language === "en"}>EN</button>
+    </div>
   );
 }

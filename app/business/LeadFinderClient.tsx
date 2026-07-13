@@ -212,15 +212,15 @@ const STATUSES: LeadStatus[] = [
   "rejected",
 ];
 const TABS: Array<{ key: BusinessTab; label: string }> = [
-  { key: "radar", label: "lead finder" },
-  { key: "audit", label: "audit" },
-  { key: "offer", label: "offers" },
-  { key: "pitch", label: "pitch" },
-  { key: "demo", label: "demo page" },
-  { key: "crm", label: "crm" },
-  { key: "templates", label: "templates" },
-  { key: "content", label: "text gen" },
-  { key: "money", label: "money" },
+  { key: "radar", label: "Lead search" },
+  { key: "audit", label: "Quick audit" },
+  { key: "offer", label: "Offer builder" },
+  { key: "pitch", label: "Outreach" },
+  { key: "demo", label: "Site preview" },
+  { key: "crm", label: "Saved leads" },
+  { key: "templates", label: "Templates" },
+  { key: "content", label: "Content" },
+  { key: "money", label: "Summary" },
 ];
 
 const NICHE_PRESETS = [
@@ -1021,7 +1021,7 @@ export default function LeadFinderClient({ username }: { username: string }) {
         <div className="spread">
           <div>
             <p className="badge">ADMIN ONLY</p>
-            <h1 className="terminal-title">Local business money dashboard</h1>
+            <h1 className="terminal-title">Lead discovery workspace</h1>
             <p className="muted">
               Signed in as {username}. User 2 cannot see this page or its APIs.
               This is for finding local businesses, creating offers, pitching,
