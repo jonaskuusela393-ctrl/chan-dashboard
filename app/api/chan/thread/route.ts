@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authStatus, requireAdmin } from "@/lib/auth";
 import { isBoardBlocked } from "@/lib/db";
-import { cleanBoard, cleanExt, validBoard } from "@/lib/chan";
+import { cleanBoard, cleanExt, isPermanentlyExcludedBoard, validBoard } from "@/lib/chan";
 import { cleanHtml } from "@/lib/sanitize";
 
 export const runtime = "nodejs";
@@ -16,6 +16,9 @@ export async function GET(req: NextRequest) {
     const session = requireAdmin(req);
     const board = cleanBoard(req.nextUrl.searchParams.get("board") || "g");
     const no = String(req.nextUrl.searchParams.get("no") || "").trim();
+    if (isPermanentlyExcludedBoard(board)) {
+      return jsonError("This board is permanently unavailable.", 410);
+    }
     if (!validBoard(board) || !/^\d{1,20}$/.test(no)) return jsonError("Bad board or thread id", 400);
     if (await isBoardBlocked(session.username, board)) return jsonError(`/${board}/ is disabled for your account.`, 403);
 

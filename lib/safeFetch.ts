@@ -117,8 +117,8 @@ export async function assertPublicUrl(input: string | URL) {
   return url;
 }
 
-async function readLimitedText(response: Response, maxBytes: number) {
-  if (!response.body) return { body: "", bytes: 0, truncated: false };
+async function readLimitedBytes(response: Response, maxBytes: number) {
+  if (!response.body) return { bytesValue: new Uint8Array(), bytes: 0, truncated: false };
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let bytes = 0;
@@ -149,7 +149,30 @@ async function readLimitedText(response: Response, maxBytes: number) {
     merged.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return { body: new TextDecoder("utf-8", { fatal: false }).decode(merged), bytes, truncated };
+  return { bytesValue: merged, bytes, truncated };
+}
+
+function normaliseCharset(value: string) {
+  const charset = value.trim().toLowerCase().replace(/["']/g, "");
+  if (["iso-8859-1", "latin1", "latin-1", "windows-1252", "cp1252"].includes(charset)) return "windows-1252";
+  if (["iso-8859-15", "latin9", "latin-9"].includes(charset)) return "iso-8859-15";
+  if (["utf8", "utf-8"].includes(charset)) return "utf-8";
+  return charset || "utf-8";
+}
+
+function decodeHtmlBytes(bytesValue: Uint8Array, contentType: string) {
+  const headerCharset = contentType.match(/charset\s*=\s*["']?([^;\s"']+)/i)?.[1] || "";
+  const asciiProbe = new TextDecoder("windows-1252", { fatal: false }).decode(bytesValue.slice(0, 8192));
+  const metaCharset = asciiProbe.match(/<meta[^>]+charset\s*=\s*["']?([^\s"'/>;]+)/i)?.[1]
+    || asciiProbe.match(/<meta[^>]+content\s*=\s*["'][^"']*charset\s*=\s*([^\s"';>]+)/i)?.[1]
+    || "";
+  const candidates = [headerCharset, metaCharset, "utf-8", "windows-1252"].map(normaliseCharset);
+  for (const charset of candidates) {
+    try {
+      return new TextDecoder(charset, { fatal: false }).decode(bytesValue);
+    } catch {}
+  }
+  return new TextDecoder("utf-8", { fatal: false }).decode(bytesValue);
 }
 
 export async function safeFetchText(input: string | URL, options: SafeFetchOptions = {}): Promise<SafeFetchResult> {
@@ -190,8 +213,8 @@ export async function safeFetchText(input: string | URL, options: SafeFetchOptio
     if (options.acceptContentTypes && contentType && !options.acceptContentTypes.test(contentType)) {
       return { response, url, body: "", bytes: 0, truncated: false };
     }
-    const text = await readLimitedText(response, maxBytes);
-    return { response, url, ...text };
+    const raw = await readLimitedBytes(response, maxBytes);
+    return { response, url, body: decodeHtmlBytes(raw.bytesValue, contentType), bytes: raw.bytes, truncated: raw.truncated };
   }
   throw new Error("too many redirects");
 }

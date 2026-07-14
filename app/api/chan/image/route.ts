@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authStatus, requireAdmin } from "@/lib/auth";
 import { isBoardBlocked } from "@/lib/db";
-import { cleanBoard, validBoard } from "@/lib/chan";
+import { cleanBoard, isPermanentlyExcludedBoard, validBoard } from "@/lib/chan";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
     const board = cleanBoard(req.nextUrl.searchParams.get("board") || "");
     const tim = String(req.nextUrl.searchParams.get("tim") || "").trim();
     const ext = String(req.nextUrl.searchParams.get("ext") || "").trim().toLowerCase();
+    if (isPermanentlyExcludedBoard(board)) {
+      return jsonError("This board is permanently unavailable.", 410);
+    }
     if (!validBoard(board)) return jsonError("Bad board", 400);
     if (await isBoardBlocked(session.username, board)) return jsonError(`/${board}/ is disabled for your account.`, 403);
     if (!/^\d+$/.test(tim)) return jsonError("Bad media id", 400);

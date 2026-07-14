@@ -77,3 +77,12 @@ The administrator has a private `/personal` page containing:
 - The restored read-only 4chan viewport
 
 Customers cannot register or access private pages. The second private account remains restricted to Chat. The main interface is monochrome black/white; the accurate business map intentionally retains its neon-green terminal treatment.
+
+
+## Personal: Artifact Live
+
+The administrator-only Personal area includes Twitch Artifact-category live streams, saved channel links, an embedded player, optional Twitch chat and diagnostics. Automatic category discovery requires `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET`; manual saved-channel embeds work without API credentials. Twitch embeds automatically use the current hostname as the required `parent` value.
+
+## Reliable website scanning
+
+Bulk website scans run one website per short request to avoid Vercel function timeouts. Use the quick batch scan for all loaded leads and the deep scan for one selected business. Automated website labels are screening signals only and must be confirmed manually before making claims to a potential customer.

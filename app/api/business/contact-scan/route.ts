@@ -28,7 +28,7 @@ type StructuredContacts = {
 };
 
 const CONTACT_WORDS = /contact|contacts|contact-us|yhteys|yhteystiedot|ota-yhteytta|ota-yhteyttä|asiakaspalvelu|about|meista|meistä|tiimi|team|varaus|booking|quote|request-quote|tarjous|lomake|message|viesti|support|help|customer-service/i;
-const EMAIL_RE = /[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+/gi;
+const EMAIL_RE = /[\p{L}0-9.!#$%&'*+/=?^_`{|}~-]+@[\p{L}0-9-]+(?:\.[\p{L}0-9-]+)+/giu;
 const BAD_EMAIL_PARTS = [
   "example.com", "example.fi", "sentry.io", "wixpress.com", "schema.org", "domain.com", "yourdomain",
   "email.com", "test.com", "placeholder", "cloudflare", "wordpress.org", "gmail.con", "invalid.",
@@ -153,7 +153,7 @@ function cleanEmail(email: string) {
 }
 
 function validEmail(email: string) {
-  if (!/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(email)) return false;
+  if (!/^[\p{L}0-9.!#$%&'*+/=?^_`{|}~-]+@[\p{L}0-9-]+(?:\.[\p{L}0-9-]+)+$/iu.test(email)) return false;
   if (email.length > 180 || email.includes("..")) return false;
   if (BAD_EMAIL_PARTS.some((bad) => email.includes(bad))) return false;
   if (/\.(png|jpg|jpeg|gif|webp|svg|css|js|woff2?|ttf)$/i.test(email)) return false;
@@ -243,22 +243,38 @@ function socialLinks(urls: string[]) {
 
 function qualityFromPages(root: URL, pages: PageScan[], emails: string[], forms: string[], phones: string[]) {
   const first = pages[0];
-  let upgradeScore = 18;
-  const notes: string[] = [];
-  if (root.protocol !== "https:") { upgradeScore += 12; notes.push("not HTTPS"); }
-  if (!first?.title || first.title.length < 8) { upgradeScore += 8; notes.push("missing or weak page title"); }
-  if (!first?.hasMetaDescription) { upgradeScore += 6; notes.push("meta description missing"); }
-  if (!first?.hasH1) { upgradeScore += 6; notes.push("main heading missing"); }
-  if (pages.some((p) => !p.hasViewport)) { upgradeScore += 23; notes.push("mobile viewport missing"); }
-  if (!emails.length && !forms.length && !phones.length) { upgradeScore += 22; notes.push("no clear email, form, or phone link found"); }
-  if (!pages.some((p) => p.hasContactWords)) { upgradeScore += 8; notes.push("contact path is hard to find"); }
-  if (first && first.bytes > 0 && first.bytes < 4500) { upgradeScore += 10; notes.push("very small/simple homepage"); }
-  if (pages.some((p) => p.hasOldMarkup)) { upgradeScore += 14; notes.push("old HTML/layout signals"); }
-  if (pages.some((p) => p.status >= 400)) { upgradeScore += 8; notes.push("some useful pages returned errors"); }
-  if (first?.responseMs && first.responseMs > 3500) { upgradeScore += 9; notes.push("slow server response"); }
+  if (!first || first.status === 0 || first.status >= 400) {
+    return {
+      upgradeScore: 0,
+      siteQuality: "needs_review",
+      siteNotes: "The homepage could not be assessed reliably. This is not proof that the website is weak; open it manually before contacting the business.",
+      assessmentConfidence: "low",
+    };
+  }
+
+  let upgradeScore = 8;
+  const technical: string[] = [];
+  const conversion: string[] = [];
+  if (root.protocol !== "https:") { upgradeScore += 18; technical.push("website does not use HTTPS"); }
+  if (!first.hasViewport) { upgradeScore += 26; technical.push("mobile viewport is missing"); }
+  if (first.hasOldMarkup) { upgradeScore += 22; technical.push("old layout/HTML signals detected"); }
+  if (!first.title || first.title.length < 8) { upgradeScore += 8; technical.push("page title needs review"); }
+  if (!first.hasMetaDescription) { upgradeScore += 5; technical.push("meta description was not found"); }
+  if (!first.hasH1) { upgradeScore += 5; technical.push("main heading was not found"); }
+  if (first.bytes > 0 && first.bytes < 3000) { upgradeScore += 5; technical.push("homepage returned very little HTML"); }
+  if (first.responseMs > 5000) { upgradeScore += 7; technical.push("server response was slow during this check"); }
+  if (!emails.length && !forms.length && !phones.length) conversion.push("no direct contact path was found by the scanner");
+  else if (!emails.length && !forms.length) conversion.push("phone/social contact is available but no email or form was confirmed");
+
+  const serious = !first.hasViewport || first.hasOldMarkup || root.protocol !== "https:";
   const score = Math.max(0, Math.min(100, upgradeScore));
-  const siteQuality = score >= 62 ? "weak" : score >= 40 ? "needs_review" : "ok";
-  return { upgradeScore: score, siteQuality, siteNotes: notes.length ? notes.join(" · ") : "Basic technical and contact signals look okay; inspect the visual design manually." };
+  const siteQuality = serious && score >= 48 ? "weak" : technical.length >= 3 ? "needs_review" : "ok";
+  const notes = [
+    technical.length ? `Technical: ${technical.join("; ")}.` : "Technical basics detected on the fetched homepage.",
+    conversion.length ? `Contact/conversion: ${conversion.join("; ")}.` : "At least one direct contact path was confirmed.",
+    "Visual quality, brand strength and business results still require human review.",
+  ];
+  return { upgradeScore: score, siteQuality, siteNotes: notes.join(" "), assessmentConfidence: "medium" };
 }
 
 async function discoverSitemapCandidates(root: URL) {
@@ -283,7 +299,7 @@ async function discoverSitemapCandidates(root: URL) {
   return candidates.slice(0, 8);
 }
 
-async function scanWebsite(raw: string) {
+async function scanWebsite(raw: string, mode: "quick" | "deep" = "deep") {
   const start = normalizePublicHttpUrl(raw);
   const queue: URL[] = [start];
   const seen = new Set<string>();
@@ -298,15 +314,18 @@ async function scanWebsite(raw: string) {
   const enqueue = (url: URL | null) => {
     if (!url || !["http:", "https:"].includes(url.protocol) || !sameSite(start, url)) return;
     const key = url.toString().replace(/\/$/, "");
-    if (seen.has(key) || queue.some((item) => item.toString().replace(/\/$/, "") === key) || queue.length >= 14) return;
+    if (seen.has(key) || queue.some((item) => item.toString().replace(/\/$/, "") === key) || queue.length >= (mode === "quick" ? 6 : 10)) return;
     queue.push(url);
   };
 
-  const sitemapCandidates = await discoverSitemapCandidates(start);
-  sitemapCandidates.forEach(enqueue);
-  COMMON_PATHS.forEach((path) => enqueue(new URL(path, start)));
+  if (mode === "deep") {
+    const sitemapCandidates = await discoverSitemapCandidates(start);
+    sitemapCandidates.forEach(enqueue);
+    COMMON_PATHS.forEach((path) => enqueue(new URL(path, start)));
+  }
 
-  for (let index = 0; index < queue.length && pages.length < 12; index += 1) {
+  const pageLimit = mode === "quick" ? 4 : 8;
+  for (let index = 0; index < queue.length && pages.length < pageLimit; index += 1) {
     const pageUrl = queue[index];
     const key = pageUrl.toString().replace(/\/$/, "");
     if (seen.has(key)) continue;
@@ -314,7 +333,7 @@ async function scanWebsite(raw: string) {
     const started = Date.now();
     try {
       const result = await safeFetchText(pageUrl, {
-        timeoutMs: 7500,
+        timeoutMs: mode === "quick" ? 4500 : 6500,
         maxBytes: 260_000,
         acceptContentTypes: /text\/html|application\/xhtml\+xml|text\/plain/i,
       });
@@ -356,8 +375,12 @@ async function scanWebsite(raw: string) {
         hasOldMarkup: /<font\b|<center\b|<frameset\b|generator["'][^>]*(frontpage|dreamweaver)|table\s+[^>]*(width=|cellpadding=)/i.test(html),
       });
     } catch (error) {
-      pages.push({ url: pageUrl.toString(), status: 0, title: "", bytes: 0, responseMs: Date.now() - started, hasViewport: false, hasMetaDescription: false, hasH1: false, hasContactWords: false, hasForm: false, hasOldMarkup: false });
-      if (pages.length === 1) throw error;
+      if (index === 0) {
+        pages.push({ url: pageUrl.toString(), status: 0, title: "", bytes: 0, responseMs: Date.now() - started, hasViewport: false, hasMetaDescription: false, hasH1: false, hasContactWords: false, hasForm: false, hasOldMarkup: false });
+        throw error;
+      }
+      // Guessed contact/about paths often return 404 or block bots. Ignore those misses;
+      // they are not evidence that the business website itself is broken.
     }
   }
 
@@ -375,7 +398,7 @@ async function scanWebsite(raw: string) {
   let renderedFallback = false;
 
   // Optional real-browser fallback for sites that render all contact details with JavaScript.
-  if (!emails.length && !phones.length && !contactForms.length && process.env.BROWSERLESS_TOKEN) {
+  if (mode === "deep" && !emails.length && !phones.length && !contactForms.length && process.env.BROWSERLESS_TOKEN) {
     try {
       const browserlessBase = (process.env.BROWSERLESS_BASE_URL || "https://production-sfo.browserless.io").replace(/\/$/, "");
       const response = await fetch(`${browserlessBase}/content?token=${encodeURIComponent(process.env.BROWSERLESS_TOKEN)}`, {
@@ -440,6 +463,7 @@ async function scanWebsite(raw: string) {
     messengerUrl: socials.messengerUrl,
     contactStatus,
     renderedFallback,
+    scanMode: mode,
     pagesScanned: pages,
     ...quality,
     scannedAt: new Date().toISOString(),
@@ -451,7 +475,8 @@ export async function GET(req: NextRequest) {
     requireAdmin(req);
     const raw = String(req.nextUrl.searchParams.get("url") || "").trim();
     if (!raw) return jsonError("missing url", 400);
-    return NextResponse.json(await scanWebsite(raw));
+    const mode = req.nextUrl.searchParams.get("mode") === "quick" ? "quick" : "deep";
+    return NextResponse.json(await scanWebsite(raw, mode));
   } catch (error: any) {
     return jsonError(error?.name === "AbortError" ? "contact scan timed out" : error?.message || "contact scan failed", authStatus(error));
   }
@@ -461,18 +486,19 @@ export async function POST(req: NextRequest) {
   try {
     requireAdmin(req);
     const body = await req.json().catch(() => ({}));
-    const items = Array.isArray(body?.items) ? body.items.slice(0, 12) : [];
-    if (!items.length) return jsonError("items must contain 1-12 websites", 400);
-    const results = await Promise.all(items.map(async (item: any) => {
+    const items = Array.isArray(body?.items) ? body.items.slice(0, 3) : [];
+    if (!items.length) return jsonError("items must contain 1-3 websites", 400);
+    const results: Array<Record<string, unknown>> = [];
+    for (const item of items) {
       const id = String(item?.id || "").slice(0, 200);
       const url = String(item?.url || "").trim();
-      if (!url) return { id, ok: false, error: "missing url" };
+      if (!url) { results.push({ id, ok: false, error: "missing url" }); continue; }
       try {
-        return { id, ...(await scanWebsite(url)) };
+        results.push({ id, ...(await scanWebsite(url, "quick")) });
       } catch (error: any) {
-        return { id, ok: false, error: error?.name === "AbortError" ? "scan timed out" : error?.message || "scan failed" };
+        results.push({ id, ok: false, error: error?.name === "AbortError" ? "scan timed out" : error?.message || "scan failed" });
       }
-    }));
+    }
     return NextResponse.json({ ok: true, results });
   } catch (error: any) {
     return jsonError(error?.message || "bulk contact scan failed", authStatus(error));

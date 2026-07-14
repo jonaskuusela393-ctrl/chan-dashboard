@@ -136,8 +136,8 @@ export default function BusinessMap({ leads, selected, searchCenter, searchLabel
     const node = containerRef.current;
     if (!node) return;
     const listener = (event: WheelEvent) => wheelHandlerRef.current(event);
-    node.addEventListener("wheel", listener, { passive: false, capture: true });
-    return () => node.removeEventListener("wheel", listener, { capture: true } as EventListenerOptions);
+    node.addEventListener("wheel", listener, { passive: false });
+    return () => node.removeEventListener("wheel", listener);
   }, []);
 
   function fitResults() { const fit = fitZoom(visibleLeads, size.width, size.height); if (fit) { setCenter(fit.center); setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, fit.zoom))); } }
@@ -155,7 +155,6 @@ export default function BusinessMap({ leads, selected, searchCenter, searchLabel
       aria-label="Interactive street map of businesses. Use arrow keys to move and plus or minus to zoom."
       onFocus={() => setMapFocused(true)}
       onBlur={() => setMapFocused(false)}
-      onWheelCapture={(event) => { if (event.cancelable) event.preventDefault(); event.stopPropagation(); }}
       onDoubleClick={(event) => setZoomAt(zoom + 1, event.clientX, event.clientY)}
       onKeyDown={(event) => {
         if (event.key === "+" || event.key === "=") { event.preventDefault(); setZoomAt(zoom + 1); }

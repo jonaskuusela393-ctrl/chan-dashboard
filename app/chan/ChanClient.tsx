@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BOARD_GROUPS } from "@/lib/chan";
+import { BOARD_GROUPS, isPermanentlyExcludedBoard } from "@/lib/chan";
 
 type Thread = {
   no: number;
@@ -36,6 +36,20 @@ type MediaState = {
 } | null;
 
 const SCOPE = "chan";
+
+function firstAvailableBoard(blocks: Block[]) {
+  const blocked = new Set(blocks.map((block) => block.board));
+
+  for (const group of BOARD_GROUPS) {
+    for (const [board] of group.boards) {
+      if (!blocked.has(board) && !isPermanentlyExcludedBoard(board)) {
+        return board;
+      }
+    }
+  }
+
+  return "";
+}
 
 function cleanBoard(value: string) {
   return value.replace(/[^a-z0-9]/gi, "").slice(0, 10).toLowerCase();
@@ -162,7 +176,17 @@ export default function ChanClient({ username }: { username: string }) {
 
     try {
       const [, freshBlocks] = await Promise.all([loadDeleted(), loadBlocks()]);
-      await loadCatalog("g", false, freshBlocks);
+      const initialBoard = firstAvailableBoard(freshBlocks);
+
+      if (!initialBoard) {
+        setBoardInput("");
+        setActiveBoard("");
+        setThreads([]);
+        setStatus("Every available board is disabled.");
+        return;
+      }
+
+      await loadCatalog(initialBoard, false, freshBlocks);
     } catch (error) {
       setStatus(errorMessage(error, "boot failed"));
     } finally {
@@ -175,6 +199,12 @@ export default function ChanClient({ username }: { username: string }) {
 
     if (!board) {
       setStatus("empty board");
+      return;
+    }
+
+    if (isPermanentlyExcludedBoard(board)) {
+      setBoardInput("");
+      setStatus("That board is permanently unavailable.");
       return;
     }
 
@@ -341,18 +371,28 @@ export default function ChanClient({ username }: { username: string }) {
 
       setBlocks(nextBlocks);
 
-      if (activeBoard === board) {
+      const durationText =
+        mode === "permanent" ? "permanently" : `for ${mode} day${mode === "1" ? "" : "s"}`;
+
+      if (activeBoard === board || boardInput === board) {
         setThreads([]);
         setSelected(null);
         setPosts([]);
         setOpenMedia({});
-      }
 
-      setStatus(
-        `/${board}/ disabled ${
-          mode === "permanent" ? "permanently" : `for ${mode} day${mode === "1" ? "" : "s"}`
-        }`
-      );
+        const fallback = firstAvailableBoard(nextBlocks);
+
+        if (fallback) {
+          await loadCatalog(fallback, false, nextBlocks);
+          setStatus(`/${board}/ disabled ${durationText} · switched to /${fallback}/`);
+        } else {
+          setBoardInput("");
+          setActiveBoard("");
+          setStatus(`/${board}/ disabled ${durationText} · no boards remain available`);
+        }
+      } else {
+        setStatus(`/${board}/ disabled ${durationText}`);
+      }
     } catch (error) {
       setStatus(errorMessage(error, "disable failed"));
     } finally {
@@ -491,24 +531,33 @@ export default function ChanClient({ username }: { username: string }) {
           <p className="muted small">
             Tap a board to select and load it. Disabled boards stay hidden for your account.
           </p>
-          {BOARD_GROUPS.map((group) => (
-            <div className="stack" key={group.title}>
-              <h3>{group.title}</h3>
-              <div className="board-grid">
-                {group.boards.map(([board, label]) => (
-                  <button
-                    className="board-chip"
-                    key={`${group.title}-${board}`}
-                    onClick={() => loadCatalog(board)}
-                    disabled={loading || blockedBoards.has(board)}
-                    title={label}
-                  >
-                    /{board}/ {label}
-                  </button>
-                ))}
+          {BOARD_GROUPS.map((group) => {
+            const visibleBoards = group.boards.filter(
+              ([board]) =>
+                !blockedBoards.has(board) && !isPermanentlyExcludedBoard(board)
+            );
+
+            if (visibleBoards.length === 0) return null;
+
+            return (
+              <div className="stack" key={group.title}>
+                <h3>{group.title}</h3>
+                <div className="board-grid">
+                  {visibleBoards.map(([board, label]) => (
+                    <button
+                      className="board-chip"
+                      key={`${group.title}-${board}`}
+                      onClick={() => loadCatalog(board)}
+                      disabled={loading}
+                      title={label}
+                    >
+                      /{board}/ {label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </details>
 
         <div className="row">

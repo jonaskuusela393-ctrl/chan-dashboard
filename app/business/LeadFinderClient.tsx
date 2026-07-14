@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import BusinessMap from "./BusinessMap";
 
 type LeadStatus =
@@ -74,7 +74,11 @@ type WebsiteCheck = {
   hasHttps?: boolean;
   oldMarkup?: boolean;
   weak?: boolean;
+  classification?: "basic_checks_ok" | "needs_review" | "upgrade_opportunity" | "manual_review";
+  confidence?: "low" | "medium" | "high";
+  summary?: string;
   issues?: string[];
+  improvementNotes?: string[];
   responseMs?: number;
   bytes?: number;
   error?: string;
@@ -521,6 +525,9 @@ export default function LeadFinderClient({ username }: { username: string }) {
   const [contactScan, setContactScan] = useState<ContactScan | null>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("client system ready");
+  const bulkScanCancelRef = useRef(false);
+  const bulkScanControllerRef = useRef<AbortController | null>(null);
+  const [bulkScanProgress, setBulkScanProgress] = useState({ running: false, completed: 0, total: 0, failed: 0 });
   const [manualName, setManualName] = useState("");
   const [manualCategory, setManualCategory] = useState("painter");
   const [manualCity, setManualCity] = useState("Lohja Finland");
@@ -764,9 +771,11 @@ export default function LeadFinderClient({ username }: { username: string }) {
       const data = (await readJson(response)) as WebsiteCheck;
       setWebsiteCheck(data);
       setStatus(
-        data.weak
-          ? "website looks weak / worth checking manually"
-          : "website responded and has basic signals",
+        data.classification === "upgrade_opportunity"
+          ? "concrete technical issues found · verify manually before outreach"
+          : data.classification === "basic_checks_ok"
+            ? "basic technical checks passed"
+            : "automated result needs manual review",
       );
     } catch (error) {
       setWebsiteCheck({ error: err(error, "website check failed") });
@@ -832,7 +841,7 @@ export default function LeadFinderClient({ username }: { username: string }) {
     setStatus(`deep contact scan: ${lead.name}...`);
     setContactScan(null);
     try {
-      const response = await fetch(`/api/business/contact-scan?url=${encodeURIComponent(lead.website)}`, { cache: "no-store" });
+      const response = await fetch(`/api/business/contact-scan?mode=deep&url=${encodeURIComponent(lead.website)}`, { cache: "no-store" });
       const data = (await readJson(response)) as ContactScan;
       setContactScan(data);
       if (!response.ok || !data.ok) throw new Error(String(data.error || "contact scan failed"));
@@ -854,59 +863,74 @@ export default function LeadFinderClient({ username }: { username: string }) {
   async function scanVisibleWebsites() {
     const targets = filteredResults.filter((lead) => lead.website);
     if (!targets.length) {
-      setStatus("no visible website leads to scan");
+      setStatus("No loaded website leads are available to scan.");
       return;
     }
+    bulkScanCancelRef.current = false;
     setLoading(true);
+    setBulkScanProgress({ running: true, completed: 0, total: targets.length, failed: 0 });
     let completed = 0;
     let failed = 0;
     let contactsFound = 0;
     const updates = new Map<string, BusinessLead>();
     try {
-      for (let offset = 0; offset < targets.length; offset += 4) {
-        const batch = targets.slice(offset, offset + 4);
-        setStatus(`deep scanning ${completed}/${targets.length} websites...`);
-        const response = await fetch("/api/business/contact-scan", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: batch.map((lead) => ({ id: lead.id, url: lead.website })) }),
-        });
-        const payload = await readJson(response);
-        if (!response.ok) throw new Error(String(payload.error || "bulk scan failed"));
-        const scanResults = Array.isArray(payload.results) ? payload.results as Array<ContactScan & { id?: string }> : [];
-        const batchUpdates: BusinessLead[] = [];
-        for (const scan of scanResults) {
-          const lead = batch.find((item) => item.id === scan.id);
-          if (!lead) continue;
+      for (const lead of targets) {
+        if (bulkScanCancelRef.current) break;
+        setStatus(`Scanning ${completed + 1}/${targets.length}: ${lead.name}. Each website runs as its own Vercel request.`);
+        const controller = new AbortController();
+        bulkScanControllerRef.current = controller;
+        const timer = window.setTimeout(() => controller.abort(), 20_000);
+        try {
+          const response = await fetch(`/api/business/contact-scan?mode=quick&url=${encodeURIComponent(lead.website)}`, {
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          const scan = (await readJson(response)) as ContactScan;
           completed += 1;
-          if (!scan.ok) {
+          if (!response.ok || !scan.ok) {
             failed += 1;
-            continue;
+          } else {
+            const next = { ...lead, ...patchFromContactScan(lead, scan) } as BusinessLead;
+            updates.set(next.id, next);
+            if (hasAnyContact(next)) contactsFound += 1;
+            const shouldPersist = persistBulkScans || saved.some((item) => item.id === next.id);
+            if (shouldPersist) {
+              await persistLeadQuiet({ ...next, status: next.status === "new" ? "saved" : next.status });
+              await importScanContacts(next, scan);
+            }
+            setResults((old) => old.map((item) => item.id === next.id ? next : item));
+            setSaved((old) => old.map((item) => item.id === next.id ? next : item));
+            setSelected((old) => old?.id === next.id ? next : old);
           }
-          const next = { ...lead, ...patchFromContactScan(lead, scan) } as BusinessLead;
-          updates.set(next.id, next);
-          batchUpdates.push(next);
-          if (hasAnyContact(next)) contactsFound += 1;
-          const shouldPersistContacts = persistBulkScans || saved.some((item) => item.id === next.id);
-          if (shouldPersistContacts) await importScanContacts(next, scan);
+        } catch (error) {
+          if (bulkScanCancelRef.current) break;
+          completed += 1;
+          failed += 1;
+          console.warn("Website scan failed", lead.name, error);
+        } finally {
+          window.clearTimeout(timer);
+          bulkScanControllerRef.current = null;
+          setBulkScanProgress({ running: true, completed, total: targets.length, failed });
         }
-        setResults((old) => old.map((lead) => updates.get(lead.id) || lead));
-        setSaved((old) => old.map((lead) => updates.get(lead.id) || lead));
-        setSelected((old) => old ? updates.get(old.id) || old : old);
-        if (persistBulkScans) {
-          await Promise.all(batchUpdates.map((lead) => persistLeadQuiet({ ...lead, status: lead.status === "new" ? "saved" : lead.status })));
-        } else {
-          const savedIds = new Set(saved.map((lead) => lead.id));
-          await Promise.all(batchUpdates.filter((lead) => savedIds.has(lead.id)).map(persistLeadQuiet));
-        }
+        // Yield to the browser so the page remains responsive during long scans.
+        await new Promise((resolve) => window.setTimeout(resolve, 80));
       }
       if (persistBulkScans || saved.length) await loadSaved();
-      setStatus(`scan complete: ${completed}/${targets.length} websites · ${contactsFound} with contact paths · ${failed} failed`);
-    } catch (error) {
-      setStatus(`${err(error, "bulk scan failed")} · completed ${completed}/${targets.length}`);
+      const cancelled = bulkScanCancelRef.current;
+      setStatus(cancelled
+        ? `Scan stopped safely at ${completed}/${targets.length}. Run it again to continue with the current results.`
+        : `Scan complete: ${completed}/${targets.length} websites · ${contactsFound} with contact paths · ${failed} need manual review.`);
     } finally {
       setLoading(false);
+      setBulkScanProgress((old) => ({ ...old, running: false }));
+      bulkScanControllerRef.current = null;
     }
+  }
+
+  function stopBulkScan() {
+    bulkScanCancelRef.current = true;
+    bulkScanControllerRef.current?.abort();
+    setStatus("Stopping after the current website…");
   }
 
   async function saveManualLead() {
@@ -1176,9 +1200,17 @@ export default function LeadFinderClient({ username }: { username: string }) {
                   onClick={() => void scanVisibleWebsites()}
                   disabled={loading || !filteredResults.some((lead) => lead.website)}
                 >
-                  scan all loaded sites ({filteredResults.filter((lead) => lead.website).length})
+                  scan loaded websites one by one ({filteredResults.filter((lead) => lead.website).length})
                 </button>
+                {bulkScanProgress.running && <button type="button" className="danger" onClick={stopBulkScan}>stop scan safely</button>}
               </div>
+              {bulkScanProgress.total > 0 && (
+                <div className="bulk-scan-progress" aria-live="polite">
+                  <div className="spread"><strong>Website scan progress</strong><span>{bulkScanProgress.completed}/{bulkScanProgress.total}</span></div>
+                  <progress max={bulkScanProgress.total} value={bulkScanProgress.completed} />
+                  <p className="muted small">Each site uses a separate short request, preventing one slow website from timing out the whole batch. Failed sites are kept for manual review.</p>
+                </div>
+              )}
               <p className="muted small">
                 Live search needs GOOGLE_MAPS_API_KEY. Estimated maximum is {Math.min(90, Number(searchPages) * Number(searchVariants) * Number(searchGrid) * Number(searchGrid))} Places requests before contact crawling; the server enforces a safety budget. Results are deduplicated.
               </p>
@@ -1376,8 +1408,8 @@ export default function LeadFinderClient({ username }: { username: string }) {
                         <div className="scan-card stack">
                           <div className="spread">
                             <strong>Website check</strong>
-                            <span className={websiteCheck.error || websiteCheck.weak ? "badge warn" : "badge"}>
-                              {websiteCheck.error ? "FAILED" : websiteCheck.weak ? "UPGRADE LEAD" : "BASIC CHECKS OK"}
+                            <span className={websiteCheck.error || websiteCheck.classification !== "basic_checks_ok" ? "badge warn" : "badge"}>
+                              {websiteCheck.error ? "MANUAL REVIEW" : websiteCheck.classification === "upgrade_opportunity" ? "TECHNICAL ISSUES" : websiteCheck.classification === "basic_checks_ok" ? "BASIC CHECKS OK" : "REVIEW NEEDED"}
                             </span>
                           </div>
                           {websiteCheck.error ? (
@@ -1385,8 +1417,12 @@ export default function LeadFinderClient({ username }: { username: string }) {
                           ) : (
                             <>
                               <p className="muted small">{websiteCheck.title || websiteCheck.url} · {websiteCheck.status} · {websiteCheck.responseMs ?? "?"} ms</p>
+                              {websiteCheck.summary && <p className="muted small">{websiteCheck.summary}</p>}
                               {!!websiteCheck.issues?.length && (
-                                <div className="chip-row">{websiteCheck.issues.map((issue) => <span className="badge warn" key={issue}>{issue}</span>)}</div>
+                                <div><span className="dim small">technical findings</span><div className="chip-row">{websiteCheck.issues.map((issue) => <span className="badge warn" key={issue}>{issue}</span>)}</div></div>
+                              )}
+                              {!!websiteCheck.improvementNotes?.length && (
+                                <div><span className="dim small">possible improvements</span><div className="chip-row">{websiteCheck.improvementNotes.map((issue) => <span className="badge" key={issue}>{issue}</span>)}</div></div>
                               )}
                             </>
                           )}

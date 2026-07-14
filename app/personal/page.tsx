@@ -10,6 +10,6 @@ export default async function PersonalPage({ searchParams }: { searchParams: Pro
   if (!session) redirect("/login");
   if (session.role !== "admin") redirect("/chat");
   const params = await searchParams;
-  const initialTab = params.tab === "chan" ? "chan" : "youtube";
+  const initialTab = params.tab === "chan" ? "chan" : params.tab === "twitch" ? "twitch" : "youtube";
   return <PersonalClient username={session.username} initialTab={initialTab} />;
 }

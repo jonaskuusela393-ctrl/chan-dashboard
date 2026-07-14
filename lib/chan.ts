@@ -104,7 +104,6 @@ export const BOARD_GROUPS = [
       ["qst", "Quests"],
       ["s4s", "Shit 4chan Says"],
       ["soc", "Social"],
-      ["vp", "Pokémon"],
       ["vip", "Very Important Posts"],
       ["wg", "Wallpapers/General"],
       ["wsg", "Worksafe GIF"],
@@ -116,12 +115,19 @@ export const BOARD_GROUPS = [
 
 export const BOARDS: Set<string> = new Set(BOARD_GROUPS.flatMap((group) => group.boards.map(([board]) => board)));
 
+const PERMANENTLY_EXCLUDED_BOARDS: ReadonlySet<string> = new Set(["vp"]);
+
+export function isPermanentlyExcludedBoard(value: string) {
+  return PERMANENTLY_EXCLUDED_BOARDS.has(cleanBoard(value));
+}
+
 export function cleanBoard(value: string) {
   return value.replace(/[^a-z0-9]/gi, "").slice(0, 10).toLowerCase();
 }
 
 export function validBoard(value: string) {
-  return BOARDS.has(cleanBoard(value));
+  const board = cleanBoard(value);
+  return !isPermanentlyExcludedBoard(board) && BOARDS.has(board);
 }
 
 export function cleanExt(value: unknown) {

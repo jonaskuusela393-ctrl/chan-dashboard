@@ -3,14 +3,16 @@
 import { useMemo, useState } from "react";
 import YouTubeClient from "@/app/youtube/YouTubeClient";
 import ChanClient from "@/app/chan/ChanClient";
+import TwitchArtifactClient from "./TwitchArtifactClient";
 
-type PersonalTab = "youtube" | "chan";
+type PersonalTab = "youtube" | "twitch" | "chan";
 
 export default function PersonalClient({ username, initialTab = "youtube" }: { username: string; initialTab?: PersonalTab }) {
   const [active, setActive] = useState<PersonalTab>(initialTab);
   const [visited, setVisited] = useState<Set<PersonalTab>>(() => new Set([initialTab]));
   const tabs = useMemo(() => ([
     { key: "youtube" as const, label: "YouTube", description: "Text-first search, direct video opening and permanent hidden-video controls." },
+    { key: "twitch" as const, label: "Artifact Live", description: "Live Artifact-category channels, saved Twitch links, embedded player and chat." },
     { key: "chan" as const, label: "4chan", description: "The restored read-only board and thread viewport with permanent hides and board disabling." },
   ]), []);
 
@@ -48,6 +50,9 @@ export default function PersonalClient({ username, initialTab = "youtube" }: { u
 
       <section hidden={active !== "youtube"} aria-hidden={active !== "youtube"}>
         {visited.has("youtube") && <YouTubeClient />}
+      </section>
+      <section hidden={active !== "twitch"} aria-hidden={active !== "twitch"}>
+        {visited.has("twitch") && <TwitchArtifactClient />}
       </section>
       <section hidden={active !== "chan"} aria-hidden={active !== "chan"}>
         {visited.has("chan") && <ChanClient username={username} />}
