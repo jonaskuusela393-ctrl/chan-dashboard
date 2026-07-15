@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 import { BOARD_GROUPS, isPermanentlyExcludedBoard } from "@/lib/chan";
 
 type Thread = {
@@ -101,6 +102,43 @@ function errorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error.trim()) return error;
   return fallback;
+}
+
+function IconAction({
+  label,
+  children,
+  className = "",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      className={`icon-action ${className}`.trim()}
+      aria-label={label}
+      title={label}
+      {...props}
+    >
+      <span aria-hidden="true">{children}</span>
+    </button>
+  );
+}
+
+function IconLink({
+  label,
+  children,
+  className = "",
+  ...props
+}: AnchorHTMLAttributes<HTMLAnchorElement> & { label: string; children: ReactNode }) {
+  return (
+    <a
+      className={`buttonlike icon-action ${className}`.trim()}
+      aria-label={label}
+      title={label}
+      {...props}
+    >
+      <span aria-hidden="true">{children}</span>
+    </a>
+  );
 }
 
 export default function ChanClient({ username }: { username: string }) {
@@ -441,7 +479,7 @@ export default function ChanClient({ username }: { username: string }) {
       <div className="inline-media stack">
         <div className="spread">
           <span className="badge">{media.label}</span>
-          <button onClick={() => toggleMedia(item)}>close file</button>
+          <IconAction label="Close inline file" onClick={() => toggleMedia(item)}>×</IconAction>
         </div>
 
         {media.kind === "video" ? (
@@ -450,9 +488,7 @@ export default function ChanClient({ username }: { username: string }) {
           <img className="fullimg" src={media.url} alt={media.label} loading="lazy" />
         )}
 
-        <a className="buttonlike" href={media.url} target="_blank" rel="noreferrer">
-          open file tab
-        </a>
+        <IconLink label="Open original file in a new tab" href={media.url} target="_blank" rel="noreferrer">↗</IconLink>
       </div>
     );
   }
@@ -494,12 +530,8 @@ export default function ChanClient({ username }: { username: string }) {
           </div>
 
           <div className="row">
-            <button onClick={() => loadCatalog(activeBoard)} disabled={loading || activeBlocked}>
-              reload
-            </button>
-            <button onClick={syncAll} disabled={loading}>
-              sync
-            </button>
+            <IconAction label="Reload board" onClick={() => loadCatalog(activeBoard)} disabled={loading || activeBlocked}>↻</IconAction>
+            <IconAction label="Synchronize deleted posts and disabled boards" onClick={syncAll} disabled={loading}>⟳</IconAction>
           </div>
         </div>
 
@@ -515,9 +547,7 @@ export default function ChanClient({ username }: { username: string }) {
             placeholder="board e.g. g"
           />
 
-          <button onClick={() => loadCatalog(boardInput)} disabled={loading}>
-            load board
-          </button>
+          <IconAction label="Load board" onClick={() => loadCatalog(boardInput)} disabled={loading}>→</IconAction>
 
           <input
             value={search}
@@ -561,18 +591,10 @@ export default function ChanClient({ username }: { username: string }) {
         </details>
 
         <div className="row">
-          <button className="warn" onClick={() => disableBoard("1")} disabled={loading}>
-            disable 1 day
-          </button>
-          <button className="warn" onClick={() => disableBoard("7")} disabled={loading}>
-            disable 7 days
-          </button>
-          <button className="warn" onClick={() => disableBoard("30")} disabled={loading}>
-            disable 30 days
-          </button>
-          <button className="danger" onClick={() => disableBoard("permanent")} disabled={loading}>
-            disable forever
-          </button>
+          <IconAction className="warn duration-icon" label="Disable this board for 1 day" onClick={() => disableBoard("1")} disabled={loading}>◷1</IconAction>
+          <IconAction className="warn duration-icon" label="Disable this board for 7 days" onClick={() => disableBoard("7")} disabled={loading}>◷7</IconAction>
+          <IconAction className="warn duration-icon" label="Disable this board for 30 days" onClick={() => disableBoard("30")} disabled={loading}>◷30</IconAction>
+          <IconAction className="danger" label="Disable this board forever" onClick={() => disableBoard("permanent")} disabled={loading}>∞</IconAction>
         </div>
 
         <p className="muted small">
@@ -608,17 +630,14 @@ export default function ChanClient({ username }: { username: string }) {
 
             {selected && (
               <div className="row">
-                <button onClick={() => openThread(selected)} disabled={loading}>
-                  reload thread
-                </button>
-                <button
+                <IconAction label="Reload this thread" onClick={() => openThread(selected)} disabled={loading}>↻</IconAction>
+                <IconAction
                   className="danger"
+                  label="Delete and permanently hide this whole thread"
                   onClick={() =>
                     remove(threadKey(activeBoard, selected.no), `${activeBoard} thread ${selected.no}`)
                   }
-                >
-                  delete whole thread
-                </button>
+                >×</IconAction>
               </div>
             )}
           </div>
@@ -641,19 +660,19 @@ export default function ChanClient({ username }: { username: string }) {
                   </span>
                 </div>
 
-                <button
+                <IconAction
                   className="danger"
+                  label="Delete and permanently hide this post"
                   onClick={() => remove(postKey(activeBoard, post.no), `${activeBoard} post ${post.no}`)}
-                >
-                  delete post
-                </button>
+                >×</IconAction>
               </div>
 
               {post.tim && (
                 <div className="stack">
-                  <button onClick={() => toggleMedia(post)}>
-                    {openMedia[mediaKey(activeBoard, post.no)] ? "close" : "view"} {fileLabel(post)}
-                  </button>
+                  <IconAction
+                    label={`${openMedia[mediaKey(activeBoard, post.no)] ? "Close" : "View"} ${fileLabel(post)}`}
+                    onClick={() => toggleMedia(post)}
+                  >{openMedia[mediaKey(activeBoard, post.no)] ? "▢" : "▣"}</IconAction>
                   {renderInlineMedia(post)}
                 </div>
               )}
@@ -686,21 +705,22 @@ export default function ChanClient({ username }: { username: string }) {
             <article className="thread stack" key={thread.no}>
               <div className="spread">
                 <div className="row">
-                  <button onClick={() => openThread(thread)}>
-                    {selected?.no === thread.no ? "opened" : "open"} #{thread.no}
-                  </button>
+                  <IconAction
+                    label={`${selected?.no === thread.no ? "Currently open" : "Open"} thread #${thread.no}`}
+                    onClick={() => openThread(thread)}
+                  >{selected?.no === thread.no ? "●" : "▶"}</IconAction>
+                  <span className="badge">#{thread.no}</span>
                   {thread.sticky && <span className="badge warn">sticky</span>}
                   {thread.closed && <span className="badge danger">closed</span>}
                 </div>
 
-                <button
+                <IconAction
                   className="danger"
+                  label="Delete and permanently hide this thread"
                   onClick={() =>
                     remove(threadKey(activeBoard, thread.no), `${activeBoard} thread ${thread.no}`)
                   }
-                >
-                  delete thread
-                </button>
+                >×</IconAction>
               </div>
 
               <div>
@@ -713,9 +733,10 @@ export default function ChanClient({ username }: { username: string }) {
 
               {thread.tim && (
                 <div className="stack">
-                  <button onClick={() => toggleMedia(thread)}>
-                    {openMedia[mediaKey(activeBoard, thread.no)] ? "close" : "view"} {fileLabel(thread)}
-                  </button>
+                  <IconAction
+                    label={`${openMedia[mediaKey(activeBoard, thread.no)] ? "Close" : "View"} ${fileLabel(thread)}`}
+                    onClick={() => toggleMedia(thread)}
+                  >{openMedia[mediaKey(activeBoard, thread.no)] ? "▢" : "▣"}</IconAction>
                   {renderInlineMedia(thread)}
                 </div>
               )}

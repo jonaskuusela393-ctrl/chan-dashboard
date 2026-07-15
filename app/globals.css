@@ -2516,3 +2516,31 @@ kbd { display:inline-flex; min-width:24px; justify-content:center; padding:2px 6
 @media (max-width:620px) {
   .business-navigation { grid-template-columns:1fr; }
 }
+
+/* v13 safe stream switcher + compact 4chan actions */
+.stream-switcher-panel code { color:#f1f1f1; }
+.stream-source-add-grid { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(180px,.8fr) auto; gap:10px; align-items:end; }
+.stream-source-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:10px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.stream-source-toolbar button.active { border-color:#f0f0f0; background:#f0f0f0; color:#050505; }
+.stream-source-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.stream-source-card { display:flex; min-width:0; flex-direction:column; gap:10px; padding:14px; border:1px solid var(--line); border-radius:13px; background:#050505; transition:border-color .16s ease, transform .16s ease, background .16s ease; }
+.stream-source-card:hover { border-color:#4a4a4a; transform:translateY(-1px); }
+.stream-source-card.active { border-color:#f0f0f0; background:#0d0d0d; box-shadow:0 0 0 1px rgba(255,255,255,.08); }
+.stream-source-card .tiny { font-size:10px; letter-spacing:.08em; }
+.stream-source-card .row { margin-top:auto; }
+
+.icon-action { width:38px; min-width:38px; height:38px; min-height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; font-size:18px; line-height:1; font-weight:800; vertical-align:middle; }
+.icon-action span { display:inline-flex; align-items:center; justify-content:center; pointer-events:none; }
+.icon-action.duration-icon { width:46px; min-width:46px; font-size:14px; letter-spacing:-.04em; }
+a.icon-action { text-decoration:none; }
+.inline-media > .spread .icon-action { margin-left:auto; }
+.thread .icon-action,.post .icon-action { flex:0 0 auto; }
+
+@media (max-width: 1100px) {
+  .stream-source-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width: 720px) {
+  .stream-source-add-grid,.stream-source-grid { grid-template-columns:1fr; }
+  .stream-source-toolbar { align-items:flex-start; flex-direction:column; }
+}
