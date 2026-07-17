@@ -1,0 +1,1 @@
+import ResetClient from './ResetClient';export const metadata={title:'Set new password',robots:{index:false,follow:false}};export default function Page({searchParams}:{searchParams:Promise<{token?:string}>}){return <ResetClient searchParams={searchParams}/>}

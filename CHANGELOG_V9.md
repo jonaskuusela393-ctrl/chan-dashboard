@@ -1,8 +1,8 @@
-# Raccoon North v9
+# Raccoon Signal v9
 
 ## Public experience
 
-- Refined the working brand to **Raccoon North**, while keeping the registered legal entity configurable separately.
+- Refined the working brand to **Raccoon Signal**, while keeping the registered legal entity configurable separately.
 - Rebuilt the public English/Finnish landing page around plain-language outcomes instead of technical terminology.
 - Added consistent bilingual navigation, language controls, service packages, process explanations, estimate flow, contact forms and client support.
 - Moved existing-client requests to a dedicated no-login support page using private project codes.

@@ -28,7 +28,7 @@ function numberValue(name: string, fallback: number) {
 }
 
 export function getPublicSiteConfig(): PublicSiteConfig {
-  const serviceName = text("NEXT_PUBLIC_SERVICE_NAME", "Raccoon North");
+  const serviceName = text("NEXT_PUBLIC_SERVICE_NAME", "Raccoon Signal");
   const legalName = text("LEGAL_BUSINESS_NAME");
   const businessId = text("LEGAL_BUSINESS_ID");
   const address = text("LEGAL_STREET_ADDRESS");

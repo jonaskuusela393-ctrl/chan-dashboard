@@ -1,14 +1,3 @@
-export default function BrandMark({ compact = false }: { compact?: boolean }) {
-  return (
-    <span className={`brand-lockup ${compact ? "compact" : ""}`} aria-hidden="true">
-      <svg className="brand-mark" viewBox="0 0 64 64" role="img">
-        <path d="M12 19 5 8l16 6A28 28 0 0 1 32 12a28 28 0 0 1 11 2L59 8l-7 11a25 25 0 0 1 3 12c0 15-10 25-23 25S9 46 9 31a25 25 0 0 1 3-12Z" fill="currentColor" opacity=".16"/>
-        <path d="M13 20 7 10l15 6M51 20l6-10-15 6" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M16 29c5-6 10-8 16-8s11 2 16 8c-4 11-9 17-16 17S20 40 16 29Z" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round"/>
-        <path d="M17 28c5 0 10 2 15 7 5-5 10-7 15-7M24 31l5 3-5 3-5-3 5-3Zm16 0 5 3-5 3-5-3 5-3Z" fill="currentColor"/>
-        <path d="m29 41 3 2 3-2" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-      </svg>
-      <span className="brand-signal" />
-    </span>
-  );
+export default function BrandMark({compact=false}:{compact?:boolean}){
+ return <span className={`raccoon-mark ${compact?"compact":""}`} aria-hidden="true"><svg viewBox="0 0 96 96" role="img"><path fill="#f5f7fb" d="M16 33 7 13l24 10A42 42 0 0 1 48 19a42 42 0 0 1 17 4l24-10-9 20c7 8 10 18 8 29-3 18-19 30-40 30S11 80 8 62c-2-11 1-21 8-29Z"/><path fill="#252a33" d="M18 39 8 19l24 12 16-8 16 8 24-12-10 20c4 6 6 13 4 21-3 15-16 25-34 25S17 75 14 60c-2-8 0-15 4-21Z"/><path fill="#0a0c10" d="M19 46c7-10 16-15 29-15s22 5 29 15c-5 13-15 21-29 21S24 59 19 46Z"/><ellipse cx="33" cy="49" rx="11" ry="9" fill="#eef2f8"/><ellipse cx="63" cy="49" rx="11" ry="9" fill="#eef2f8"/><circle cx="34" cy="50" r="4" fill="#08090b"/><circle cx="62" cy="50" r="4" fill="#08090b"/><path fill="#eef2f8" d="M30 63c5-5 11-7 18-7s13 2 18 7c-3 12-10 18-18 18s-15-6-18-18Z"/><path fill="#090a0c" d="M40 63c2-3 5-4 8-4s6 1 8 4c-1 4-4 6-8 6s-7-2-8-6Z"/><path d="M41 73c4 3 10 3 14 0" fill="none" stroke="#11141a" strokeWidth="3" strokeLinecap="round"/></svg></span>
 }

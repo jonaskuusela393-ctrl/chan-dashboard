@@ -34,12 +34,12 @@ type LocalizedOption = {
 };
 
 export const SITE_KINDS: Array<LocalizedOption & { value: SiteKind; price: number; includedPages: number; weeks: [number, number] }> = [
-  { value: "starter", label: "A simple one-page website", labelFi: "Yksinkertainen yhden sivun verkkosivusto", description: "Best when the business needs a clear introduction, services and contact details on one page.", descriptionFi: "Sopii yritykselle, joka tarvitsee yhdelle sivulle selkeän esittelyn, palvelut ja yhteystiedot.", price: 890, includedPages: 1, weeks: [1, 2] },
-  { value: "business", label: "A complete company website", labelFi: "Täydellinen yrityksen verkkosivusto", description: "A normal small-business website with separate pages for services, the company and contact details.", descriptionFi: "Tavallinen pienyrityksen verkkosivusto, jossa palvelut, yritysesittely ja yhteystiedot ovat omilla sivuillaan.", price: 1490, includedPages: 5, weeks: [2, 4] },
-  { value: "booking", label: "A company website with booking or quote requests", labelFi: "Yrityssivusto ajanvarauksella tai tarjouspyynnöllä", description: "For businesses that need customers to book a time or send a structured quote request.", descriptionFi: "Yritykselle, joka tarvitsee ajanvarauksen tai selkeän tarjouspyyntölomakkeen.", price: 2290, includedPages: 6, weeks: [3, 5] },
-  { value: "catalog", label: "A larger service or product website", labelFi: "Laajempi palvelu- tai tuotesivusto", description: "For many services, locations, projects or products without a full online checkout.", descriptionFi: "Kun palveluita, toimipaikkoja, projekteja tai tuotteita on paljon, mutta verkkokauppaa ei tarvita.", price: 2990, includedPages: 10, weeks: [4, 7] },
-  { value: "commerce", label: "An online shop", labelFi: "Verkkokauppa", description: "Products, shopping cart, checkout connection and store setup.", descriptionFi: "Tuotteet, ostoskori, maksaminen ja verkkokaupan käyttöönotto.", price: 4900, includedPages: 8, weeks: [5, 9] },
-  { value: "custom", label: "A custom online service", labelFi: "Räätälöity verkkopalvelu", description: "For logins, dashboards, workflows, customer portals or other database-backed functions.", descriptionFi: "Kirjautumisiin, hallintapaneeleihin, työnkulkuihin, asiakasportaaleihin tai muihin tietokantaa käyttäviin toimintoihin.", price: 6900, includedPages: 6, weeks: [6, 12] },
+  { value: "starter", label: "A simple one-page website", labelFi: "Yksinkertainen yhden sivun verkkosivusto", description: "Best when the business needs a clear introduction, services and contact details on one page.", descriptionFi: "Sopii yritykselle, joka tarvitsee yhdelle sivulle selkeän esittelyn, palvelut ja yhteystiedot.", price: 950, includedPages: 1, weeks: [1, 2] },
+  { value: "business", label: "A complete company website", labelFi: "Täydellinen yrityksen verkkosivusto", description: "A normal small-business website with separate pages for services, the company and contact details.", descriptionFi: "Tavallinen pienyrityksen verkkosivusto, jossa palvelut, yritysesittely ja yhteystiedot ovat omilla sivuillaan.", price: 2500, includedPages: 5, weeks: [2, 4] },
+  { value: "booking", label: "A company website with booking or quote requests", labelFi: "Yrityssivusto ajanvarauksella tai tarjouspyynnöllä", description: "For businesses that need customers to book a time or send a structured quote request.", descriptionFi: "Yritykselle, joka tarvitsee ajanvarauksen tai selkeän tarjouspyyntölomakkeen.", price: 3500, includedPages: 6, weeks: [3, 5] },
+  { value: "catalog", label: "A larger service or product website", labelFi: "Laajempi palvelu- tai tuotesivusto", description: "For many services, locations, projects or products without a full online checkout.", descriptionFi: "Kun palveluita, toimipaikkoja, projekteja tai tuotteita on paljon, mutta verkkokauppaa ei tarvita.", price: 4500, includedPages: 10, weeks: [4, 7] },
+  { value: "commerce", label: "An online shop", labelFi: "Verkkokauppa", description: "Products, shopping cart, checkout connection and store setup.", descriptionFi: "Tuotteet, ostoskori, maksaminen ja verkkokaupan käyttöönotto.", price: 6500, includedPages: 8, weeks: [5, 9] },
+  { value: "custom", label: "A custom online service", labelFi: "Räätälöity verkkopalvelu", description: "For logins, dashboards, workflows, customer portals or other database-backed functions.", descriptionFi: "Kirjautumisiin, hallintapaneeleihin, työnkulkuihin, asiakasportaaleihin tai muihin tietokantaa käyttäviin toimintoihin.", price: 9000, includedPages: 6, weeks: [6, 12] },
 ];
 
 export const FEATURE_OPTIONS: Array<LocalizedOption & { value: string; price: number }> = [
@@ -59,9 +59,9 @@ export const FEATURE_OPTIONS: Array<LocalizedOption & { value: string; price: nu
 
 export const CARE_PLANS: Array<LocalizedOption & { value: CarePlan; monthly: number }> = [
   { value: "handoff", label: "Full handoff", labelFi: "Täysi luovutus", monthly: 0, description: "You own the accounts. Future updates are quoted separately.", descriptionFi: "Omistat tilit. Tulevat päivitykset hinnoitellaan erikseen." },
-  { value: "care", label: "Technical care", labelFi: "Tekninen ylläpito", monthly: 59, description: "Availability checks, security updates and small technical fixes.", descriptionFi: "Saatavuuden seuranta, tietoturvapäivitykset ja pienet tekniset korjaukset." },
-  { value: "managed", label: "Managed website", labelFi: "Hallinnoitu verkkosivusto", monthly: 129, description: "Technical care plus reasonable text and image updates each month.", descriptionFi: "Tekninen ylläpito sekä kohtuulliset teksti- ja kuvapäivitykset kuukausittain." },
-  { value: "growth", label: "Managed growth", labelFi: "Hallinnoitu kasvu", monthly: 249, description: "Managed service plus recurring search, content and conversion improvements.", descriptionFi: "Hallinnoitu palvelu sekä säännölliset hakunäkyvyyden, sisällön ja yhteydenottojen parannukset." },
+  { value: "care", label: "Technical care", labelFi: "Tekninen ylläpito", monthly: 69, description: "Availability checks, security updates and small technical fixes.", descriptionFi: "Saatavuuden seuranta, tietoturvapäivitykset ja pienet tekniset korjaukset." },
+  { value: "managed", label: "Managed website", labelFi: "Hallinnoitu verkkosivusto", monthly: 149, description: "Technical care plus reasonable text and image updates each month.", descriptionFi: "Tekninen ylläpito sekä kohtuulliset teksti- ja kuvapäivitykset kuukausittain." },
+  { value: "growth", label: "Managed growth", labelFi: "Hallinnoitu kasvu", monthly: 299, description: "Managed service plus recurring search, content and conversion improvements.", descriptionFi: "Hallinnoitu palvelu sekä säännölliset hakunäkyvyyden, sisällön ja yhteydenottojen parannukset." },
 ];
 
 function whole(value: unknown, minimum: number, maximum: number) {
@@ -95,7 +95,7 @@ export function calculateEstimate(raw: Partial<EstimateInput>, language: PublicL
   if (input.urgent) setupBase *= 1.25;
   setupBase = Math.round(setupBase / 10) * 10;
 
-  const low = Math.max(690, Math.round((setupBase * 0.92) / 10) * 10);
+  const low = Math.max(850, Math.round((setupBase * 0.92) / 10) * 10);
   const high = Math.round((setupBase * 1.18) / 10) * 10;
   const minWeeks = input.urgent ? Math.max(1, kind.weeks[0] - 1) : kind.weeks[0];
   const maxWeeks = input.urgent ? Math.max(minWeeks + 1, kind.weeks[1] - 1) : kind.weeks[1];

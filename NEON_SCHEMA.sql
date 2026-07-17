@@ -303,3 +303,31 @@ CREATE TABLE IF NOT EXISTS viewport_client_events (
 CREATE INDEX IF NOT EXISTS viewport_client_sites_status_idx ON viewport_client_sites(lifecycle_status, availability_status);
 CREATE INDEX IF NOT EXISTS viewport_client_requests_site_idx ON viewport_client_requests(client_site_id, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS viewport_client_events_site_idx ON viewport_client_events(client_site_id, created_at DESC);
+
+-- V14 multi-tenant SaaS accounts, customer workspaces, billing and privacy-respecting analytics.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE TABLE IF NOT EXISTS viewport_accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT NOT NULL UNIQUE, phone TEXT NOT NULL DEFAULT '', password_hash TEXT NOT NULL,
+  name TEXT NOT NULL, company_name TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'customer', status TEXT NOT NULL DEFAULT 'active',
+  email_verified BOOLEAN NOT NULL DEFAULT FALSE, phone_verified BOOLEAN NOT NULL DEFAULT FALSE, locale TEXT NOT NULL DEFAULT 'en',
+  last_login_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_tenants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(), owner_account_id UUID NOT NULL REFERENCES viewport_accounts(id) ON DELETE CASCADE,
+  name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE, plan TEXT NOT NULL DEFAULT 'trial', status TEXT NOT NULL DEFAULT 'active', settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+  stripe_customer_id TEXT NOT NULL DEFAULT '', stripe_subscription_id TEXT NOT NULL DEFAULT '', subscription_status TEXT NOT NULL DEFAULT 'trialing',
+  trial_ends_at TIMESTAMPTZ NOT NULL DEFAULT (NOW()+INTERVAL '14 days'), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS viewport_tenant_members (tenant_id UUID NOT NULL REFERENCES viewport_tenants(id) ON DELETE CASCADE, account_id UUID NOT NULL REFERENCES viewport_accounts(id) ON DELETE CASCADE, role TEXT NOT NULL DEFAULT 'member', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY(tenant_id,account_id));
+CREATE TABLE IF NOT EXISTS viewport_verification_codes (id BIGSERIAL PRIMARY KEY, account_id UUID NOT NULL REFERENCES viewport_accounts(id) ON DELETE CASCADE, channel TEXT NOT NULL, destination TEXT NOT NULL, code_hash TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS viewport_password_resets (id BIGSERIAL PRIMARY KEY, account_id UUID NOT NULL REFERENCES viewport_accounts(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE, expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS viewport_tenant_api_keys (tenant_id UUID NOT NULL REFERENCES viewport_tenants(id) ON DELETE CASCADE, provider TEXT NOT NULL, label TEXT NOT NULL DEFAULT '', encrypted_value TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY(tenant_id,provider));
+CREATE TABLE IF NOT EXISTS viewport_customer_prospects (id TEXT NOT NULL, tenant_id UUID NOT NULL REFERENCES viewport_tenants(id) ON DELETE CASCADE, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'business', address TEXT NOT NULL DEFAULT '', phone TEXT NOT NULL DEFAULT '', website TEXT NOT NULL DEFAULT '', maps_url TEXT NOT NULL DEFAULT '', lat DOUBLE PRECISION NOT NULL DEFAULT 0, lng DOUBLE PRECISION NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'saved', score INTEGER NOT NULL DEFAULT 0, notes TEXT NOT NULL DEFAULT '', raw JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY(tenant_id,id));
+CREATE TABLE IF NOT EXISTS viewport_customer_requests (id BIGSERIAL PRIMARY KEY, tenant_id UUID NOT NULL REFERENCES viewport_tenants(id) ON DELETE CASCADE, account_id UUID REFERENCES viewport_accounts(id) ON DELETE SET NULL, kind TEXT NOT NULL DEFAULT 'support', subject TEXT NOT NULL, body TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'new', priority TEXT NOT NULL DEFAULT 'normal', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS viewport_billing_events (id BIGSERIAL PRIMARY KEY, tenant_id UUID REFERENCES viewport_tenants(id) ON DELETE SET NULL, provider TEXT NOT NULL DEFAULT 'stripe', external_id TEXT NOT NULL UNIQUE, type TEXT NOT NULL, amount NUMERIC(12,2), currency TEXT NOT NULL DEFAULT 'EUR', status TEXT NOT NULL DEFAULT '', payload JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS viewport_analytics_events (id BIGSERIAL PRIMARY KEY, visitor_hash TEXT NOT NULL, session_hash TEXT NOT NULL, path TEXT NOT NULL, referrer_host TEXT NOT NULL DEFAULT '', country TEXT NOT NULL DEFAULT '', region TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT '', device TEXT NOT NULL DEFAULT '', browser TEXT NOT NULL DEFAULT '', event_name TEXT NOT NULL DEFAULT 'page_view', metadata JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS viewport_admin_audit_log (id BIGSERIAL PRIMARY KEY, actor TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL DEFAULT '', metadata JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS viewport_accounts_status_idx ON viewport_accounts(status,created_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_customer_prospects_tenant_idx ON viewport_customer_prospects(tenant_id,updated_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_customer_requests_tenant_idx ON viewport_customer_requests(tenant_id,status,created_at DESC);
+CREATE INDEX IF NOT EXISTS viewport_analytics_created_idx ON viewport_analytics_events(created_at DESC,path);

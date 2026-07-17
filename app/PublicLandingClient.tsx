@@ -89,7 +89,7 @@ const copy = {
   en: {
     eyebrow: "WEBSITES AND DIGITAL SERVICES FOR FINNISH BUSINESSES",
     title: "A website that helps customers find, trust and contact your business.",
-    lead: "Raccoon North plans, builds and launches the whole website for you. Everything is explained clearly, ownership is written down, and help remains available after launch.",
+    lead: "Raccoon Signal plans, builds and launches the whole website for you. Everything is explained clearly, ownership is written down, and help remains available after launch.",
     primary: "Get a price estimate",
     secondary: "Discuss a project",
     serviceTitle: "One clear service from idea to a working website",
@@ -107,7 +107,7 @@ const copy = {
   fi: {
     eyebrow: "VERKKOSIVUT JA DIGIPALVELUT SUOMALAISILLE YRITYKSILLE",
     title: "Verkkosivusto, jonka avulla asiakkaat löytävät, luottavat ja ottavat yhteyttä.",
-    lead: "Raccoon North suunnittelee, rakentaa ja julkaisee koko verkkosivuston puolestasi. Kaikki selitetään selkeästi, omistus kirjataan ja apua on saatavilla myös julkaisun jälkeen.",
+    lead: "Raccoon Signal suunnittelee, rakentaa ja julkaisee koko verkkosivuston puolestasi. Kaikki selitetään selkeästi, omistus kirjataan ja apua on saatavilla myös julkaisun jälkeen.",
     primary: "Laske hinta-arvio",
     secondary: "Keskustele projektista",
     serviceTitle: "Yksi selkeä palvelu ideasta toimivaan sivustoon",

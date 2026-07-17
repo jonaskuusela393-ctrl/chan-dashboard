@@ -9,7 +9,7 @@ import { LanguageToggle, usePublicLanguage } from "./PublicHeaderNav";
 type SessionInfo = { username: string; role: string } | null;
 type Access = { business: boolean; email: boolean; youtube: boolean; dev: boolean };
 
-const publicPaths = new Set(["/", "/company", "/privacy", "/cookies", "/terms", "/accessibility", "/data-processing", "/support"]);
+const publicPaths = new Set(["/", "/company", "/privacy", "/cookies", "/terms", "/accessibility", "/data-processing", "/support", "/register", "/forgot-password", "/reset-password"]);
 
 export default function SiteHeader({ serviceName, session, access, showDev }: { serviceName: string; session: SessionInfo; access: Access; showDev: boolean }) {
   const pathname = usePathname();
@@ -19,6 +19,7 @@ export default function SiteHeader({ serviceName, session, access, showDev }: { 
   const isPublic = publicPaths.has(pathname);
   const isLogin = pathname === "/login";
   const chatOnly = session?.role === "user";
+  const customer = session?.role === "customer";
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -47,7 +48,7 @@ export default function SiteHeader({ serviceName, session, access, showDev }: { 
           </>}
           {isLogin && <Link href="/">{fi ? "Takaisin sivustolle" : "Back to website"}</Link>}
           <LanguageToggle />
-          {session && !chatOnly && <Link className="nav-admin-link" href="/dashboard">{fi ? "Hallinta" : "Dashboard"}</Link>}
+          {session ? <Link className="nav-admin-link" href={session.role === "customer" ? "/portal" : session.role === "user" ? "/chat" : "/dashboard"}>{fi ? "Oma työtila" : "Workspace"}</Link> : <><Link href="/login">{fi ? "Kirjaudu" : "Sign in"}</Link><Link className="nav-admin-link" href="/register">{fi ? "Luo tili" : "Create account"}</Link></>}
         </nav>
       </header>
     );
@@ -60,7 +61,7 @@ export default function SiteHeader({ serviceName, session, access, showDev }: { 
         <span /> <span /> <span /><b>Menu</b>
       </button>
       <nav id="private-navigation" className={`nav private-nav ${open ? "open" : ""}`} aria-label="Private navigation">
-        {chatOnly ? <>
+        {customer ? <><Link href="/portal">Workspace</Link><Link href="/portal#billing">Billing</Link><Link href="/support">Support</Link><Link href="/">Public site</Link></> : chatOnly ? <>
           <Link href="/chat">Chat</Link>
           <Link href="/">Public site</Link>
         </> : <>
@@ -69,6 +70,7 @@ export default function SiteHeader({ serviceName, session, access, showDev }: { 
           {access.email && <Link href="/email">Inbox</Link>}
           <Link href="/chat">Chat</Link>
           {access.youtube && <Link href="/personal">Personal</Link>}
+          <Link href="/admin">Admin</Link>
           {showDev && access.dev && <Link href="/dev">Workspace</Link>}
           <Link href="/">Public site</Link>
         </>}

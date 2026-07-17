@@ -3,6 +3,8 @@ import { canAccess, getSession } from "@/lib/auth";
 import { devWorkspaceEnabled } from "@/lib/devGuard";
 import { getPublicSiteConfig } from "@/lib/siteConfig";
 import SiteHeader from "./SiteHeader";
+import AnalyticsClient from "./AnalyticsClient";
+import CookieConsent from "./CookieConsent";
 import "./globals.css";
 
 const config = getPublicSiteConfig();
@@ -38,6 +40,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <a className="skip-link" href="#main-content">Skip to content</a>
         <SiteHeader serviceName={config.serviceName} session={sessionInfo} access={access} showDev={showDev} />
         <main id="main-content" className="shell">{children}</main>
+        <AnalyticsClient/>
+        <CookieConsent/>
       </body>
     </html>
   );

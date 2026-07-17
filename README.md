@@ -1,4 +1,4 @@
-# Raccoon North Business Platform
+# Raccoon Signal Business Platform
 
 A private Vercel/Neon operating dashboard plus a public bilingual website-service landing page.
 
@@ -34,7 +34,7 @@ Customers cannot register or log into the private dashboard.
 
 ## Required legal setup
 
-`Raccoon North` is a working name, not proof of registration or exclusivity. Before commercial use:
+`Raccoon Signal` is a working name, not proof of registration or exclusivity. Before commercial use:
 
 - check and register the company/trading name as appropriate
 - set the actual legal name, Business ID, address, contact information and VAT status

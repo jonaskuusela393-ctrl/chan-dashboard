@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSessionValue, SESSION_COOKIE, verifyLogin } from "@/lib/auth";
+import { createSessionValue, SESSION_COOKIE, verifyLogin, verifyTotp } from "@/lib/auth";
 import { clearLoginFailures, loginAllowed, loginKey, recordLoginFailure } from "@/lib/loginThrottle";
 
 export const runtime = "nodejs";
@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const username = String(body.username || "").slice(0, 120);
     const password = String(body.password || "").slice(0, 500);
+    const code = String(body.code || "").slice(0, 12);
     const key = loginKey(clientIp(req), username);
     const gate = loginAllowed(key);
     if (!gate.allowed) {
@@ -23,7 +24,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = verifyLogin(username, password);
+    const user = await verifyLogin(username, password);
+    if (user?.role === "admin" && process.env.ADMIN_TOTP_SECRET && !verifyTotp(code, process.env.ADMIN_TOTP_SECRET)) {
+      recordLoginFailure(key);
+      return NextResponse.json({ ok: false, error: "A valid authenticator code is required." }, { status: 401 });
+    }
+
     if (!user) {
       const attempt = recordLoginFailure(key);
       const lockedSeconds = attempt.lockedUntil > Date.now() ? Math.ceil((attempt.lockedUntil - Date.now()) / 1000) : 0;
@@ -35,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     clearLoginFailures(key);
     const res = NextResponse.json({ ok: true, username: user.username, role: user.role });
-    res.cookies.set(SESSION_COOKIE, createSessionValue(user.username, user.role), {
+    res.cookies.set(SESSION_COOKIE, createSessionValue(user.username, user.role, { accountId: user.accountId, tenantId: user.tenantId, email: user.email }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
