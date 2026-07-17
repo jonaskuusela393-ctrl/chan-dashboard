@@ -1,3 +1,7 @@
+-- RACCOON SIGNAL V15 COMPLETE NEON SCHEMA
+-- Safe to run repeatedly. V15 Reddit/YouTube/4chan permanent hiding uses
+-- viewport_deleted_items; no separate Reddit-content table is created.
+
 CREATE TABLE IF NOT EXISTS viewport_deleted_items (
   id BIGSERIAL PRIMARY KEY,
   username TEXT NOT NULL,

@@ -517,17 +517,10 @@ export default function ChanClient({ username }: { username: string }) {
   }, [posts, deleted, activeBoard]);
 
   return (
-    <div className="stack">
-      <section className="panel stack">
+    <div className="personal-tool personal-chan stack">
+      <section className="panel personal-toolbar stack">
         <div className="spread">
-          <div>
-            <p className="badge">/{activeBoard}/</p>
-            <h1 className="terminal-title">4chan viewport</h1>
-            <p className="muted">
-              Read-only. Per-user deletes and per-user board disables. Files open inline
-              next to the button you clicked.
-            </p>
-          </div>
+          <span className="badge">/{activeBoard}/</span>
 
           <div className="row">
             <IconAction label="Reload board" onClick={() => loadCatalog(activeBoard)} disabled={loading || activeBlocked}>↻</IconAction>
@@ -544,7 +537,7 @@ export default function ChanClient({ username }: { username: string }) {
                 void loadCatalog(boardInput);
               }
             }}
-            placeholder="board e.g. g"
+            placeholder="/" aria-label="Board"
           />
 
           <IconAction label="Load board" onClick={() => loadCatalog(boardInput)} disabled={loading}>→</IconAction>
@@ -552,15 +545,12 @@ export default function ChanClient({ username }: { username: string }) {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="filter loaded threads"
+            placeholder="⌕" aria-label="Filter threads"
           />
         </div>
 
         <details className="panel stack">
-          <summary>4chan board list</summary>
-          <p className="muted small">
-            Tap a board to select and load it. Disabled boards stay hidden for your account.
-          </p>
+          <summary title="Board list" aria-label="Board list">☷</summary>
           {BOARD_GROUPS.map((group) => {
             const visibleBoards = group.boards.filter(
               ([board]) =>
@@ -571,7 +561,6 @@ export default function ChanClient({ username }: { username: string }) {
 
             return (
               <div className="stack" key={group.title}>
-                <h3>{group.title}</h3>
                 <div className="board-grid">
                   {visibleBoards.map(([board, label]) => (
                     <button
@@ -597,15 +586,12 @@ export default function ChanClient({ username }: { username: string }) {
           <IconAction className="danger" label="Disable this board forever" onClick={() => disableBoard("permanent")} disabled={loading}>∞</IconAction>
         </div>
 
-        <p className="muted small">
-          Status: {loading ? "loading... " : ""}
-          {status}
-        </p>
+        <div className="personal-status" role="status" aria-live="polite"><span aria-hidden="true">{loading ? "…" : "·"}</span><span>{status}</span></div>
       </section>
 
       {blocks.length > 0 && (
         <section className="panel stack">
-          <h2>Disabled boards</h2>
+          <span className="badge" title="Disabled boards" aria-label="Disabled boards">∞</span>
           <div className="row">
             {blocks.map((block) => (
               <span className="badge warn" key={block.board}>
@@ -619,14 +605,7 @@ export default function ChanClient({ username }: { username: string }) {
       <div className="chan-layout">
         <section className="stack chan-view" ref={viewRef}>
           <div className="panel stack">
-            <div>
-              <h2>{selected ? `Thread #${selected.no}` : "Open a thread"}</h2>
-              <p className="muted small">
-                {selected
-                  ? `showing ${shownPosts.length}/${posts.length} loaded replies after your deletes`
-                  : "On mobile, opened threads appear here above the catalog so you do not have to scroll through every thread."}
-              </p>
-            </div>
+            <span className="badge">{selected ? `#${selected.no} · ${shownPosts.length}/${posts.length}` : "·"}</span>
 
             {selected && (
               <div className="row">
@@ -642,13 +621,7 @@ export default function ChanClient({ username }: { username: string }) {
             )}
           </div>
 
-          {selected && shownPosts.length === 0 && !loading && (
-            <div className="panel">
-              <p className="muted">
-                No replies shown. They may be deleted, or the thread failed to load.
-              </p>
-            </div>
-          )}
+          {selected && shownPosts.length === 0 && !loading && <div className="personal-empty">·</div>}
 
           {shownPosts.map((post) => (
             <article className="post stack" key={post.no}>
@@ -683,23 +656,9 @@ export default function ChanClient({ username }: { username: string }) {
         </section>
 
         <section className="stack chan-list">
-          <div className="panel spread">
-            <div>
-              <h2>Threads</h2>
-              <p className="muted small">
-                showing {shownThreads.length}/{threads.length}
-              </p>
-            </div>
-            <span className="badge">catalog</span>
-          </div>
+          <div className="panel spread"><span className="badge">☷ {shownThreads.length}/{threads.length}</span></div>
 
-          {shownThreads.length === 0 && !loading && (
-            <div className="panel">
-              <p className="muted">
-                No threads shown. Load a board, clear filter, or check disabled boards.
-              </p>
-            </div>
-          )}
+          {shownThreads.length === 0 && !loading && <div className="personal-empty">·</div>}
 
           {shownThreads.map((thread) => (
             <article className="thread stack" key={thread.no}>

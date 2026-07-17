@@ -1,6 +1,6 @@
 {
-  "name": "raccoon-north-business-platform",
-  "version": "1.6.0",
+  "name": "raccoon-signal-platform",
+  "version": "1.7.0",
   "private": true,
   "packageManager": "pnpm@10.13.1",
   "engines": {
