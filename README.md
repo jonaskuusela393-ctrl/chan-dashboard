@@ -87,6 +87,6 @@ The administrator-only Personal area includes Twitch Artifact-category live stre
 
 Bulk website scans run one website per short request to avoid Vercel function timeouts. Use the quick batch scan for all loaded leads and the deep scan for one selected business. Automated website labels are screening signals only and must be confirmed manually before making claims to a potential customer.
 
-## V15 personal tools
+## V16 personal tools
 
-The administrator-only Personal area now includes low-text YouTube, Twitch, 4chan, and Reddit viewers. Reddit uses approved OAuth Data API credentials and stores only permanent-hide identifiers in Neon. See `V15_SETUP.md`, `.env.example`, and `CHANGELOG_V15.md`.
+The administrator-only Personal area includes low-text YouTube, Twitch, 4chan, and Reddit viewers. Twitch has a default-on movable and resizable blackout mask. Reddit uses public RSS feeds and requires no Reddit API credentials; permanent hides store only item identifiers in Neon. See `V16_SETUP.md`, `.env.example`, and `CHANGELOG_V16.md`.

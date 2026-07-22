@@ -35,7 +35,7 @@ type RedditComment = {
 
 type ListingResult = {
   ok?: boolean;
-  configured?: boolean;
+  mode?: string;
   posts?: RedditPost[];
   after?: string;
   error?: string;
@@ -43,7 +43,7 @@ type ListingResult = {
 
 type ThreadResult = {
   ok?: boolean;
-  configured?: boolean;
+  mode?: string;
   post?: RedditPost;
   comments?: RedditComment[];
   error?: string;
@@ -213,13 +213,13 @@ export default function RedditTerminalClient() {
           <CompactStatus busy={loading}>{status}</CompactStatus>
         </div>
         {savedSubs.length > 0 && <div className="personal-chip-row">{savedSubs.map((sub) => <button key={sub} className="board-chip" title={`Open r/${sub}`} onClick={() => { setSubInput(sub); setSubreddit(sub); void loadListing("", sort, sub); }}>r/{sub}</button>)}</div>}
-        {help && <div className="personal-legend" role="note">→ open · ↻ load · ⟳ sync · ♨ hot · + new/more · ↑ top · ↗ rising/link · ▶ thread · × hide forever · ☆ save</div>}
+        {help && <div className="personal-legend" role="note">public RSS · → open · ↻ load · ⟳ sync · ♨ hot · + new/more · ↑ top · ↗ link · ▶ thread · × hide forever · ☆ save</div>}
       </section>
 
       {selected && (
         <section className="panel stack reddit-thread-view">
           <div className="spread">
-            <div className="reddit-meta"><span>r/{selected.subreddit}</span><span>↑{selected.score}</span><span>#{selected.comments}</span><span>{selected.author}</span></div>
+            <div className="reddit-meta"><span>r/{selected.subreddit}</span>{selected.score !== 0 && <span>↑{selected.score}</span>}{selected.comments > 0 && <span>#{selected.comments}</span>}<span>{selected.author}</span></div>
             <div className="row">
               <IconAction label="Close thread" onClick={() => { setSelected(null); setComments([]); }}>□</IconAction>
               <IconLink label="Open on Reddit" href={redditUrl(selected.permalink)} target="_blank" rel="noreferrer">↗</IconLink>
@@ -233,7 +233,7 @@ export default function RedditTerminalClient() {
             {visibleComments.map((comment) => (
               <article className="reddit-comment" key={comment.id} style={{ marginLeft: `${Math.min(comment.depth, 8) * 14}px` }}>
                 <div className="spread">
-                  <div className="reddit-meta"><span>{comment.author || "[deleted]"}</span><span>↑{comment.score}</span><span>{when(comment.createdUtc)}</span></div>
+                  <div className="reddit-meta"><span>{comment.author || "[deleted]"}</span>{comment.score !== 0 && <span>↑{comment.score}</span>}<span>{when(comment.createdUtc)}</span></div>
                   <div className="row">
                     <IconLink label="Open comment on Reddit" href={redditUrl(comment.permalink)} target="_blank" rel="noreferrer">↗</IconLink>
                     <IconAction className="danger" label="Hide this comment forever" onClick={() => void hideForever(commentKey(comment.id)).catch((error) => setStatus(error.message))}>×</IconAction>
@@ -250,7 +250,7 @@ export default function RedditTerminalClient() {
         {visiblePosts.map((post) => (
           <article className="post reddit-post" key={post.id}>
             <div className="spread">
-              <div className="reddit-meta"><span>r/{post.subreddit}</span><span>↑{post.score}</span><span>#{post.comments}</span>{post.over18 && <span>18+</span>}{post.stickied && <span>◆</span>}</div>
+              <div className="reddit-meta"><span>r/{post.subreddit}</span>{post.score !== 0 && <span>↑{post.score}</span>}{post.comments > 0 && <span>#{post.comments}</span>}{post.over18 && <span>18+</span>}{post.stickied && <span>◆</span>}</div>
               <div className="row">
                 <IconAction label="Open post and comments" onClick={() => void openThread(post)} disabled={loading}>▶</IconAction>
                 <IconLink label="Open on Reddit" href={redditUrl(post.permalink)} target="_blank" rel="noreferrer">↗</IconLink>

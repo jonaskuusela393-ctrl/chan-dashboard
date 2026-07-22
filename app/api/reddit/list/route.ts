@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authStatus, requireAdmin } from "@/lib/auth";
-import { cleanSubreddit, redditConfigured, redditFetch } from "@/lib/reddit";
+import { cleanSubreddit, redditPublicFeed } from "@/lib/reddit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,12 +8,9 @@ export const dynamic = "force-dynamic";
 const SORTS = new Set(["hot", "new", "top", "rising"]);
 const TIMES = new Set(["hour", "day", "week", "month", "year", "all"]);
 
-function text(value: unknown, max = 5000) {
-  return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, max) : "";
-}
+function text(value: unknown, max = 5000) { return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, max) : ""; }
 function number(value: unknown) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
-function bool(value: unknown) { return Boolean(value); }
-function jsonError(error: string, status = 500) { return NextResponse.json({ ok: false, error, configured: redditConfigured() }, { status }); }
+function jsonError(error: string, status = 500) { return NextResponse.json({ ok: false, error, mode: "public-feed" }, { status }); }
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,46 +24,38 @@ export async function GET(req: NextRequest) {
     const query = text(req.nextUrl.searchParams.get("q"), 180).trim();
     const limit = Math.max(5, Math.min(number(req.nextUrl.searchParams.get("limit")) || 25, 50));
 
-    const path = query ? `/r/${subreddit}/search` : `/r/${subreddit}/${sort}`;
-    const { body, rate } = await redditFetch(path, query
-      ? { q: query, restrict_sr: true, sort, t: time, limit, after, raw_json: 1 }
-      : { t: time, limit, after, raw_json: 1 });
-    const listing = body?.data || {};
-    const posts = Array.isArray(listing.children) ? listing.children.map((child: any) => {
-      const p = child?.data || {};
-      return {
-        id: text(p.id, 30),
-        fullname: text(p.name, 40),
-        subreddit: text(p.subreddit, 40),
-        title: text(p.title, 600),
-        author: text(p.author, 80),
-        score: number(p.score),
-        comments: number(p.num_comments),
-        createdUtc: number(p.created_utc),
-        selftext: text(p.selftext, 12000),
-        url: text(p.url_overridden_by_dest || p.url, 1600),
-        permalink: text(p.permalink, 1000),
-        domain: text(p.domain, 160),
-        isSelf: bool(p.is_self),
-        over18: bool(p.over_18),
-        spoiler: bool(p.spoiler),
-        stickied: bool(p.stickied),
-        locked: bool(p.locked),
-      };
-    }).filter((post: any) => post.id && post.title) : [];
+    const path = query
+      ? `/r/${subreddit}/search.rss`
+      : sort === "hot" ? `/r/${subreddit}/.rss` : `/r/${subreddit}/${sort}.rss`;
+    const feed = await redditPublicFeed(path, query
+      ? { q: query, restrict_sr: "on", sort, t: time, limit, after }
+      : { t: time, limit, after });
 
-    return NextResponse.json({
-      ok: true,
-      configured: true,
-      subreddit,
-      sort,
-      time,
-      posts,
-      after: text(listing.after, 100),
-      before: text(listing.before, 100),
-      rate,
-    });
+    const posts = feed.entries
+      .filter((entry) => entry.kind !== "comment")
+      .map((entry) => ({
+        id: entry.id,
+        fullname: `t3_${entry.id}`,
+        subreddit: entry.subreddit || subreddit,
+        title: entry.title || "Untitled",
+        author: entry.author,
+        score: 0,
+        comments: 0,
+        createdUtc: entry.createdUtc,
+        selftext: entry.contentText,
+        url: entry.externalUrl || (entry.permalink ? `https://www.reddit.com${entry.permalink}` : ""),
+        permalink: entry.permalink,
+        domain: entry.externalUrl ? (() => { try { return new URL(entry.externalUrl).hostname; } catch { return ""; } })() : "self.reddit",
+        isSelf: !entry.externalUrl,
+        over18: false,
+        spoiler: false,
+        stickied: false,
+        locked: false,
+      }))
+      .filter((post) => post.id && post.title);
+
+    return NextResponse.json({ ok: true, configured: true, mode: "public-feed", subreddit, sort, time, posts, after: feed.after });
   } catch (error: any) {
-    return jsonError(error?.name === "AbortError" ? "Reddit timed out" : error?.message || "Reddit request failed", authStatus(error));
+    return jsonError(error?.message || "Reddit public feed failed", authStatus(error));
   }
 }
