@@ -31,7 +31,7 @@ function readSources():StreamSource[]{try{const v=JSON.parse(localStorage.getIte
 function readMask(){try{return normalizeMask(JSON.parse(localStorage.getItem(MASK_STORAGE_KEY)||"null"))}catch{return DEFAULT_MASK}}
 
 export default function TwitchArtifactClient(){
- const shellRef=useRef<HTMLDivElement|null>(null);const videoStageRef=useRef<HTMLDivElement|null>(null);const maskGesture=useRef<MaskGesture|null>(null);
+ const shellRef=useRef<HTMLDivElement|null>(null);const videoStageRef=useRef<HTMLDivElement|null>(null);const maskGesture=useRef<MaskGesture|null>(null);const nativeFullscreenRef=useRef(false);
  const [data,setData]=useState<ApiResult>({});const [loading,setLoading]=useState(true);const [status,setStatus]=useState("…");
  const [saved,setSaved]=useState<SavedChannel[]>([]);const [entry,setEntry]=useState("");const [activeChannel,setActiveChannel]=useState("");const [showChat,setShowChat]=useState(false);const [parentHost,setParentHost]=useState("localhost");
  const [savedSources,setSavedSources]=useState<StreamSource[]>([]);const [gistSources,setGistSources]=useState<StreamSource[]>([]);const [sourceEntry,setSourceEntry]=useState("");const [activeSourceId,setActiveSourceId]=useState("");const [sourceLoading,setSourceLoading]=useState(false);const [nonce,setNonce]=useState(0);const [help,setHelp]=useState(false);const [diagnostics,setDiagnostics]=useState(false);
@@ -39,7 +39,25 @@ export default function TwitchArtifactClient(){
 
  useEffect(()=>{setSaved(readChannels());setSavedSources(readSources());setMask(readMask());setMaskEnabled(true);setParentHost(window.location.hostname||"localhost")},[]);
  useEffect(()=>{try{localStorage.setItem(MASK_STORAGE_KEY,JSON.stringify(mask))}catch{}},[mask]);
- useEffect(()=>{const h=()=>setFullscreenActive(document.fullscreenElement===videoStageRef.current);document.addEventListener("fullscreenchange",h);return()=>document.removeEventListener("fullscreenchange",h)},[]);
+ useEffect(()=>{
+  const getFullscreenElement=()=>document.fullscreenElement||((document as Document & {webkitFullscreenElement?:Element|null}).webkitFullscreenElement??null);
+  const h=()=>{
+   const active=getFullscreenElement()===videoStageRef.current;
+   setFullscreenActive(active);
+   if(active){nativeFullscreenRef.current=true;setTheaterMode(true)}
+   else if(nativeFullscreenRef.current){nativeFullscreenRef.current=false;setTheaterMode(false)}
+  };
+  document.addEventListener("fullscreenchange",h);
+  document.addEventListener("webkitfullscreenchange",h as EventListener);
+  return()=>{document.removeEventListener("fullscreenchange",h);document.removeEventListener("webkitfullscreenchange",h as EventListener)}
+ },[]);
+ useEffect(()=>{
+  if(!theaterMode)return;
+  const previousOverflow=document.documentElement.style.overflow;
+  const previousBodyOverflow=document.body.style.overflow;
+  document.documentElement.style.overflow="hidden";document.body.style.overflow="hidden";
+  return()=>{document.documentElement.style.overflow=previousOverflow;document.body.style.overflow=previousBodyOverflow}
+ },[theaterMode]);
  const refresh=useCallback(async()=>{setLoading(true);setStatus("…");try{const r=await fetch("/api/twitch/artifact",{cache:"no-store"});const p=await r.json().catch(()=>({})) as ApiResult;setData(p);if(!r.ok||!p.ok)throw new Error(p.error||"Twitch failed");setStatus(String(p.streams?.length||0))}catch(e){setStatus(e instanceof Error?e.message:"error")}finally{setLoading(false)}},[]);
  const refreshSources=useCallback(async()=>{setSourceLoading(true);try{const r=await fetch("/api/twitch/stream-list",{cache:"no-store"});const p=await r.json().catch(()=>({})) as StreamListResult;if(!r.ok||!p.ok)throw new Error(p.error||"list failed");setGistSources(Array.isArray(p.sources)?p.sources:[]);setStatus(String(p.sources?.length||0))}catch(e){setGistSources([]);setStatus(e instanceof Error?e.message:"error")}finally{setSourceLoading(false)}},[]);
  useEffect(()=>{void refresh();void refreshSources();const timer=window.setInterval(()=>void refresh(),120000);return()=>window.clearInterval(timer)},[refresh,refreshSources]);
@@ -77,13 +95,37 @@ export default function TwitchArtifactClient(){
  }
  function tinyMask(){setMask(current=>normalizeMask({...current,w:MIN_MASK_W,h:MIN_MASK_H}));setMaskEnabled(true)}
  async function toggleFullscreen(){
-  if(theaterMode){setTheaterMode(false);return}
-  if(document.fullscreenElement){await document.exitFullscreen();return}
-  const target=videoStageRef.current||shellRef.current;
-  if(target?.requestFullscreen){
-   try{await target.requestFullscreen();return}catch{}
+  const doc=document as Document & {webkitFullscreenElement?:Element|null;webkitExitFullscreen?:()=>void};
+  const current=document.fullscreenElement||doc.webkitFullscreenElement||null;
+  if(theaterMode||current){
+   setTheaterMode(false);setFullscreenActive(false);nativeFullscreenRef.current=false;
+   try{
+    if(document.fullscreenElement&&document.exitFullscreen)await document.exitFullscreen();
+    else if(doc.webkitFullscreenElement&&doc.webkitExitFullscreen)doc.webkitExitFullscreen();
+   }catch{}
+   return;
   }
+
+  // Always enter the reliable full-window fallback immediately. Some browsers
+  // resolve requestFullscreen() without actually switching modes.
   setTheaterMode(true);
+  const target=videoStageRef.current||shellRef.current;
+  if(!target)return;
+  const extended=target as HTMLDivElement & {webkitRequestFullscreen?:()=>void};
+  try{
+   if(target.requestFullscreen){
+    await target.requestFullscreen({navigationUI:"hide"});
+   }else if(extended.webkitRequestFullscreen){
+    extended.webkitRequestFullscreen();
+   }
+  }catch{
+   // CSS full-window mode remains active when native fullscreen is unavailable.
+  }
+  window.setTimeout(()=>{
+   const active=document.fullscreenElement===target||doc.webkitFullscreenElement===target;
+   setFullscreenActive(active);
+   nativeFullscreenRef.current=active;
+  },180);
  }
  const allSources=useMemo(()=>{const m=new Map<string,StreamSource>();for(const s of savedSources)m.set(s.id,s);for(const s of gistSources)if(!m.has(s.id))m.set(s.id,s);return[...m.values()]},[savedSources,gistSources]);
  const selectedSource=useMemo(()=>allSources.find(s=>s.id===activeSourceId)||null,[activeSourceId,allSources]);
