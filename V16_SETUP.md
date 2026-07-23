@@ -14,7 +14,7 @@ No Reddit developer application is required.
 Optional:
 
 ```env
-REDDIT_RSS_USER_AGENT=Mozilla/5.0 (compatible; RaccoonSignal/16; +https://your-domain.fi)
+REDDIT_PUBLIC_USER_AGENT=Mozilla/5.0 (compatible; RaccoonSignal/17; +https://your-domain.fi)
 ```
 
 The reader is intentionally modest and read-only. It does not post, vote, log in, or bulk-archive Reddit content. Permanent hiding stores only the Reddit item identifier in Neon.

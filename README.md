@@ -89,4 +89,4 @@ Bulk website scans run one website per short request to avoid Vercel function ti
 
 ## V16 personal tools
 
-The administrator-only Personal area includes low-text YouTube, Twitch, 4chan, and Reddit viewers. Twitch has a default-on movable and resizable blackout mask. Reddit uses public RSS feeds and requires no Reddit API credentials; permanent hides store only item identifiers in Neon. See `V16_SETUP.md`, `.env.example`, and `CHANGELOG_V16.md`.
+The administrator-only Personal area includes low-text YouTube, Twitch, 4chan, and Reddit viewers. Twitch has a default-on movable and resizable blackout mask. Reddit uses credential-free public JSON, RSS, and old-Reddit HTML fallbacks and requires no Reddit API credentials; permanent hides store only item identifiers in Neon. See `V17_SETUP.md`, `.env.example`, and `CHANGELOG_V17.md`.

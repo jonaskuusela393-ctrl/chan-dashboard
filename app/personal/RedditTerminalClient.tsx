@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CompactStatus, IconAction, IconLink } from "./IconAction";
 
 type RedditPost = {
@@ -39,6 +39,7 @@ type ListingResult = {
   posts?: RedditPost[];
   after?: string;
   error?: string;
+  source?: string;
 };
 
 type ThreadResult = {
@@ -47,6 +48,7 @@ type ThreadResult = {
   post?: RedditPost;
   comments?: RedditComment[];
   error?: string;
+  source?: string;
 };
 
 const SCOPE = "reddit";
@@ -94,10 +96,20 @@ export default function RedditTerminalClient() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("·");
   const [help, setHelp] = useState(false);
+  const listingAbort = useRef<AbortController | null>(null);
+  const threadAbort = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setSavedSubs(loadSubs());
-    void loadHidden();
+    void (async () => {
+      try {
+        await loadHidden();
+        await loadListing("", "hot", "all", true);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "error");
+      }
+    })();
+    return () => { listingAbort.current?.abort(); threadAbort.current?.abort(); };
   }, []);
 
   async function loadHidden() {
@@ -128,16 +140,18 @@ export default function RedditTerminalClient() {
     setStatus("×");
   }
 
-  async function loadListing(nextAfter = "", selectedSort = sort, overrideSub = "") {
-    if (loading) return;
+  async function loadListing(nextAfter = "", selectedSort = sort, overrideSub = "", skipHiddenSync = false) {
     const sub = cleanSub(overrideSub || subInput || subreddit);
+    listingAbort.current?.abort();
+    const controller = new AbortController();
+    listingAbort.current = controller;
     setLoading(true);
     setStatus("…");
     try {
-      const currentHidden = await loadHidden();
+      const currentHidden = skipHiddenSync ? hidden : await loadHidden();
       const params = new URLSearchParams({ subreddit: sub, sort: selectedSort, time, after: nextAfter });
       if (query.trim()) params.set("q", query.trim());
-      const response = await fetch(`/api/reddit/list?${params}`, { cache: "no-store" });
+      const response = await fetch(`/api/reddit/list?${params}`, { cache: "no-store", signal: controller.signal });
       const data = await readJson(response) as ListingResult;
       if (!response.ok || !data.ok) throw new Error(data.error || "Reddit failed");
       const incoming = (data.posts || []).filter((post) => !currentHidden.has(postKey(post.id)));
@@ -147,14 +161,17 @@ export default function RedditTerminalClient() {
       setSubInput(sub);
       setSelected(null);
       setComments([]);
-      setStatus(`${incoming.length}${data.after ? "+" : ""}`);
+      setStatus(`${incoming.length}${data.after ? "+" : ""}${data.source ? ` · ${data.source}` : ""}`);
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       setStatus(error instanceof Error ? error.message : "error");
-    } finally { setLoading(false); }
+    } finally { if (listingAbort.current === controller) { listingAbort.current = null; setLoading(false); } }
   }
 
   async function openThread(post: RedditPost) {
-    if (loading) return;
+    threadAbort.current?.abort();
+    const controller = new AbortController();
+    threadAbort.current = controller;
     setLoading(true);
     setSelected(post);
     setComments([]);
@@ -163,15 +180,16 @@ export default function RedditTerminalClient() {
       const currentHidden = await loadHidden();
       if (currentHidden.has(postKey(post.id))) { setSelected(null); return; }
       const params = new URLSearchParams({ subreddit: post.subreddit || subreddit, id: post.id });
-      const response = await fetch(`/api/reddit/thread?${params}`, { cache: "no-store" });
+      const response = await fetch(`/api/reddit/thread?${params}`, { cache: "no-store", signal: controller.signal });
       const data = await readJson(response) as ThreadResult;
       if (!response.ok || !data.ok || !data.post) throw new Error(data.error || "thread failed");
       setSelected(data.post);
       setComments(data.comments || []);
-      setStatus(String(flattenComments(data.comments || [], currentHidden).length));
+      setStatus(`${flattenComments(data.comments || [], currentHidden).length}${data.source ? ` · ${data.source}` : ""}`);
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       setStatus(error instanceof Error ? error.message : "error");
-    } finally { setLoading(false); }
+    } finally { if (threadAbort.current === controller) { threadAbort.current = null; setLoading(false); } }
   }
 
   const visiblePosts = useMemo(() => posts.filter((post) => !hidden.has(postKey(post.id))), [posts, hidden]);
@@ -184,12 +202,12 @@ export default function RedditTerminalClient() {
           <input
             className="personal-short-input"
             value={subInput}
-            onChange={(event) => setSubInput(cleanSub(event.target.value))}
+            onChange={(event) => setSubInput(event.target.value.replace(/^\/?r\//i, "").replace(/[^a-z0-9_]/gi, "").slice(0, 32))}
             onKeyDown={(event) => { if (event.key === "Enter") void loadListing(); }}
             aria-label="Subreddit"
             placeholder="r/"
           />
-          <IconAction label="Open subreddit" onClick={() => void loadListing()} disabled={loading}>→</IconAction>
+          <IconAction label="Open subreddit" onClick={() => void loadListing()}>→</IconAction>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -197,23 +215,24 @@ export default function RedditTerminalClient() {
             aria-label="Search this subreddit"
             placeholder="⌕"
           />
-          <IconAction label="Search or refresh" onClick={() => void loadListing()} disabled={loading}>↻</IconAction>
+          <IconAction label="Search or refresh" onClick={() => void loadListing()}>↻</IconAction>
           <IconAction label="Synchronize permanently hidden items" onClick={() => void loadHidden().then((items) => setStatus(String(items.size))).catch((error) => setStatus(error.message))} disabled={loading}>⟳</IconAction>
           <IconAction label="Show symbol help" onClick={() => setHelp((value) => !value)}>?</IconAction>
         </div>
         <div className="row personal-icon-row">
           {SORTS.map(([value, icon, label]) => (
-            <IconAction key={value} label={label} className={sort === value ? "active" : ""} onClick={() => { setSort(value); void loadListing("", value); }} disabled={loading}>{icon}</IconAction>
+            <IconAction key={value} label={label} className={sort === value ? "active" : ""} onClick={() => { setSort(value); void loadListing("", value); }}>{icon}</IconAction>
           ))}
           <select value={time} onChange={(event) => setTime(event.target.value)} aria-label="Time range" title="Time range">
             <option value="hour">1h</option><option value="day">1d</option><option value="week">1w</option><option value="month">1m</option><option value="year">1y</option><option value="all">∞</option>
           </select>
           <IconAction label="Save current subreddit" onClick={() => persistSubs([subreddit, ...savedSubs])}>☆</IconAction>
+          <IconLink label="Open current subreddit on Reddit" href={`https://www.reddit.com/r/${subreddit}/`} target="_blank" rel="noreferrer">↗</IconLink>
           {after && <IconAction label="Load more posts" onClick={() => void loadListing(after)} disabled={loading}>+</IconAction>}
           <CompactStatus busy={loading}>{status}</CompactStatus>
         </div>
-        {savedSubs.length > 0 && <div className="personal-chip-row">{savedSubs.map((sub) => <button key={sub} className="board-chip" title={`Open r/${sub}`} onClick={() => { setSubInput(sub); setSubreddit(sub); void loadListing("", sort, sub); }}>r/{sub}</button>)}</div>}
-        {help && <div className="personal-legend" role="note">public RSS · → open · ↻ load · ⟳ sync · ♨ hot · + new/more · ↑ top · ↗ link · ▶ thread · × hide forever · ☆ save</div>}
+        {savedSubs.length > 0 && <div className="personal-chip-row">{savedSubs.map((sub) => <button key={sub} className="board-chip" title={`Open r/${sub}`} onClick={() => { setSubInput(sub); void loadListing("", sort, sub); }}>r/{sub}</button>)}</div>}
+        {help && <div className="personal-legend" role="note">credential-free · JSON/RSS/HTML fallback · → open · ↻ load · ⟳ sync · ♨ hot · + new/more · ↑ top · ↗ link · ▶ thread · × hide forever · ☆ save</div>}
       </section>
 
       {selected && (

@@ -16,11 +16,14 @@ const CHANNEL_STORAGE_KEY = "raccoon-personal-twitch-channels-v1";
 const SOURCE_STORAGE_KEY = "raccoon-personal-stream-sources-v1";
 const MASK_STORAGE_KEY = "raccoon-personal-twitch-mask-v1";
 const DEFAULT_MASK: MaskLayout = { x:4, y:5, w:42, h:15 };
+const MIN_MASK_W = 0.5;
+const MIN_MASK_H = 0.5;
 
 function clamp(value:number,min:number,max:number){return Math.min(max,Math.max(min,value))}
+function finite(value:unknown,fallback:number){const parsed=Number(value);return Number.isFinite(parsed)?parsed:fallback}
 function normalizeMask(value:Partial<MaskLayout>|null|undefined):MaskLayout{
- const w=clamp(Number(value?.w)||DEFAULT_MASK.w,8,94);const h=clamp(Number(value?.h)||DEFAULT_MASK.h,6,90);
- return{x:clamp(Number(value?.x)||DEFAULT_MASK.x,0,100-w),y:clamp(Number(value?.y)||DEFAULT_MASK.y,0,100-h),w,h};
+ const w=clamp(finite(value?.w,DEFAULT_MASK.w),MIN_MASK_W,100);const h=clamp(finite(value?.h,DEFAULT_MASK.h),MIN_MASK_H,100);
+ return{x:clamp(finite(value?.x,DEFAULT_MASK.x),0,100-w),y:clamp(finite(value?.y,DEFAULT_MASK.y),0,100-h),w,h};
 }
 function parseChannel(value:string){const raw=value.trim();if(!raw)return"";try{const p=/^https?:\/\//i.test(raw)?raw:raw.includes("twitch.tv/")?`https://${raw}`:"";if(p){const u=new URL(p);if(!/(^|\.)twitch\.tv$/i.test(u.hostname))return"";const c=u.pathname.split("/").filter(Boolean)[0]||"";return/^[a-z0-9_]{2,25}$/i.test(c)?c.toLowerCase():""}}catch{}const c=raw.replace(/^@/,"");return/^[a-z0-9_]{2,25}$/i.test(c)?c.toLowerCase():""}
 function readChannels():SavedChannel[]{try{const v=JSON.parse(localStorage.getItem(CHANNEL_STORAGE_KEY)||"[]");return Array.isArray(v)?v.filter(x=>x&&typeof x.channel==="string").slice(0,100):[]}catch{return[]}}
@@ -32,14 +35,15 @@ export default function TwitchArtifactClient(){
  const [data,setData]=useState<ApiResult>({});const [loading,setLoading]=useState(true);const [status,setStatus]=useState("…");
  const [saved,setSaved]=useState<SavedChannel[]>([]);const [entry,setEntry]=useState("");const [activeChannel,setActiveChannel]=useState("");const [showChat,setShowChat]=useState(false);const [parentHost,setParentHost]=useState("localhost");
  const [savedSources,setSavedSources]=useState<StreamSource[]>([]);const [gistSources,setGistSources]=useState<StreamSource[]>([]);const [sourceEntry,setSourceEntry]=useState("");const [activeSourceId,setActiveSourceId]=useState("");const [sourceLoading,setSourceLoading]=useState(false);const [nonce,setNonce]=useState(0);const [help,setHelp]=useState(false);const [diagnostics,setDiagnostics]=useState(false);
- const [maskEnabled,setMaskEnabled]=useState(true);const [mask,setMask]=useState<MaskLayout>(DEFAULT_MASK);
+ const [maskEnabled,setMaskEnabled]=useState(true);const [mask,setMask]=useState<MaskLayout>(DEFAULT_MASK);const [theaterMode,setTheaterMode]=useState(false);const [fullscreenActive,setFullscreenActive]=useState(false);
 
  useEffect(()=>{setSaved(readChannels());setSavedSources(readSources());setMask(readMask());setMaskEnabled(true);setParentHost(window.location.hostname||"localhost")},[]);
  useEffect(()=>{try{localStorage.setItem(MASK_STORAGE_KEY,JSON.stringify(mask))}catch{}},[mask]);
+ useEffect(()=>{const h=()=>setFullscreenActive(document.fullscreenElement===videoStageRef.current);document.addEventListener("fullscreenchange",h);return()=>document.removeEventListener("fullscreenchange",h)},[]);
  const refresh=useCallback(async()=>{setLoading(true);setStatus("…");try{const r=await fetch("/api/twitch/artifact",{cache:"no-store"});const p=await r.json().catch(()=>({})) as ApiResult;setData(p);if(!r.ok||!p.ok)throw new Error(p.error||"Twitch failed");setStatus(String(p.streams?.length||0))}catch(e){setStatus(e instanceof Error?e.message:"error")}finally{setLoading(false)}},[]);
  const refreshSources=useCallback(async()=>{setSourceLoading(true);try{const r=await fetch("/api/twitch/stream-list",{cache:"no-store"});const p=await r.json().catch(()=>({})) as StreamListResult;if(!r.ok||!p.ok)throw new Error(p.error||"list failed");setGistSources(Array.isArray(p.sources)?p.sources:[]);setStatus(String(p.sources?.length||0))}catch(e){setGistSources([]);setStatus(e instanceof Error?e.message:"error")}finally{setSourceLoading(false)}},[]);
  useEffect(()=>{void refresh();void refreshSources();const timer=window.setInterval(()=>void refresh(),120000);return()=>window.clearInterval(timer)},[refresh,refreshSources]);
- useEffect(()=>{const h=(e:KeyboardEvent)=>{if(e.key==="F12")return;const t=e.target as HTMLElement|null;if(t?.matches("input,textarea,select,button,[contenteditable='true'],[data-mask-control='true']"))return;if(e.key.toLowerCase()==="f"&&(activeChannel||activeSourceId)){e.preventDefault();if(document.fullscreenElement)void document.exitFullscreen();else void shellRef.current?.requestFullscreen()}if(e.key.toLowerCase()==="b"&&playerUrl){e.preventDefault();setMaskEnabled(v=>!v)}};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h)},[activeChannel,activeSourceId]);
+ useEffect(()=>{const h=(e:KeyboardEvent)=>{if(e.key==="F12")return;const t=e.target as HTMLElement|null;if(t?.matches("input,textarea,select,button,[contenteditable='true'],[data-mask-control='true']"))return;if(e.key.toLowerCase()==="f"&&(activeChannel||activeSourceId)){e.preventDefault();void toggleFullscreen()}if(e.key.toLowerCase()==="b"&&(activeChannel||activeSourceId)){e.preventDefault();setMaskEnabled(v=>!v)}};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h)},[activeChannel,activeSourceId]);
 
  function persistChannels(next:SavedChannel[]){setSaved(next);localStorage.setItem(CHANNEL_STORAGE_KEY,JSON.stringify(next))}
  function persistSources(next:StreamSource[]){const n=next.map(s=>({...s,origin:"manual" as const})).slice(0,100);setSavedSources(n);localStorage.setItem(SOURCE_STORAGE_KEY,JSON.stringify(n))}
@@ -67,6 +71,20 @@ export default function TwitchArtifactClient(){
   else return;
   setMask(normalizeMask(next));
  }
+ function resizeMask(scale:number){
+  setMask(current=>normalizeMask({...current,w:current.w*scale,h:current.h*scale}));
+  setMaskEnabled(true);
+ }
+ function tinyMask(){setMask(current=>normalizeMask({...current,w:MIN_MASK_W,h:MIN_MASK_H}));setMaskEnabled(true)}
+ async function toggleFullscreen(){
+  if(theaterMode){setTheaterMode(false);return}
+  if(document.fullscreenElement){await document.exitFullscreen();return}
+  const target=videoStageRef.current||shellRef.current;
+  if(target?.requestFullscreen){
+   try{await target.requestFullscreen();return}catch{}
+  }
+  setTheaterMode(true);
+ }
  const allSources=useMemo(()=>{const m=new Map<string,StreamSource>();for(const s of savedSources)m.set(s.id,s);for(const s of gistSources)if(!m.has(s.id))m.set(s.id,s);return[...m.values()]},[savedSources,gistSources]);
  const selectedSource=useMemo(()=>allSources.find(s=>s.id===activeSourceId)||null,[activeSourceId,allSources]);
  const nativeUrl=activeChannel?`https://player.twitch.tv/?channel=${encodeURIComponent(activeChannel)}&parent=${encodeURIComponent(parentHost)}&autoplay=false`:"";
@@ -83,8 +101,11 @@ export default function TwitchArtifactClient(){
     <IconAction label="Show or hide Twitch chat" onClick={()=>setShowChat(v=>!v)} disabled={!activeChannel}>{showChat?"◒":"◐"}</IconAction>
     <IconAction label="Reload video" onClick={()=>setNonce(n=>n+1)} disabled={!playerUrl}>⟳</IconAction>
     <IconAction label="Turn blackout mask on or off" className={maskEnabled?"active":""} onClick={()=>setMaskEnabled(v=>!v)} disabled={!playerUrl}>{maskEnabled?"■":"□"}</IconAction>
+    <IconAction label="Make blackout mask tiny" onClick={tinyMask} disabled={!playerUrl}>·</IconAction>
+    <IconAction label="Make blackout mask smaller" onClick={()=>resizeMask(.72)} disabled={!playerUrl}>−</IconAction>
+    <IconAction label="Make blackout mask larger" onClick={()=>resizeMask(1.38)} disabled={!playerUrl}>+</IconAction>
     <IconAction label="Reset blackout mask" onClick={()=>{setMask(DEFAULT_MASK);setMaskEnabled(true)}} disabled={!playerUrl}>⌂</IconAction>
-    <IconAction label="Fullscreen" onClick={()=>void shellRef.current?.requestFullscreen()} disabled={!playerUrl}>⛶</IconAction>
+    <IconAction label="Fullscreen video with blackout mask" onClick={()=>void toggleFullscreen()} disabled={!playerUrl}>⛶</IconAction>
     <IconAction label="Show diagnostics" onClick={()=>setDiagnostics(v=>!v)}>i</IconAction>
     <IconAction label="Show symbol help" onClick={()=>setHelp(v=>!v)}>?</IconAction>
     <CompactStatus busy={loading}>{status}</CompactStatus>
@@ -95,7 +116,7 @@ export default function TwitchArtifactClient(){
     <IconAction label="Use original Twitch video" onClick={()=>{setActiveSourceId("");setNonce(n=>n+1)}} disabled={!activeChannel}>◉</IconAction>
     <IconAction label="Reload safe source list" onClick={()=>void refreshSources()} disabled={sourceLoading}>↻</IconAction>
    </div>
-   {help&&<div className="personal-legend">■ mask · drag move · corner resize · arrows move · shift+arrows resize · B mask · ⌂ reset · F fullscreen</div>}
+   {help&&<div className="personal-legend">■ mask · drag move · invisible lower-right resize · · tiny · −/+ size · arrows move · shift+arrows resize · B mask · F fullscreen</div>}
    {!data.configured&&<div className="personal-legend">TWITCH_CLIENT_ID + TWITCH_CLIENT_SECRET</div>}
   </section>
 
@@ -113,8 +134,9 @@ export default function TwitchArtifactClient(){
 
   <section className="panel twitch-player-panel stack">
    {playerUrl?<div ref={shellRef} className={`twitch-embed-shell ${showChat&&activeChannel?"with-chat":""}`}>
-    <div ref={videoStageRef} className="twitch-video-stage">
-     <iframe key={`${playerUrl}-${nonce}`} className="twitch-player-frame" src={playerUrl} title="stream" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen sandbox={sandbox} referrerPolicy="strict-origin-when-cross-origin"/>
+    <div ref={videoStageRef} className={`twitch-video-stage ${theaterMode?"theater-mode":""}`}>
+     <iframe key={`${playerUrl}-${nonce}`} className="twitch-player-frame" src={playerUrl} title="stream" allow="autoplay; picture-in-picture" allowFullScreen={false} sandbox={sandbox} referrerPolicy="strict-origin-when-cross-origin"/>
+     {(fullscreenActive||theaterMode)&&<button type="button" className="twitch-theater-exit" aria-label="Exit fullscreen" title="Exit fullscreen" onClick={()=>void toggleFullscreen()}>×</button>}
      {maskEnabled&&<div
       className="twitch-blackout-mask"
       data-mask-control="true"
@@ -128,11 +150,11 @@ export default function TwitchArtifactClient(){
       onPointerUp={endMask}
       onPointerCancel={endMask}
       onKeyDown={maskKeyboard}
-     ><span className="twitch-mask-grip" aria-hidden="true">⋮⋮</span><button
+     ><button
        type="button"
        className="twitch-mask-resize"
        aria-label="Resize blackout mask"
-       title="Resize"
+       title="Resize blackout mask"
        onPointerDown={event=>beginMask(event,"resize")}
        onPointerMove={moveMask}
        onPointerUp={endMask}
@@ -141,7 +163,7 @@ export default function TwitchArtifactClient(){
     </div>
     {showChat&&activeChannel&&<iframe className="twitch-chat-frame" src={chatUrl} title="chat"/>}
    </div>:<div className="personal-empty">·</div>}
-   {diagnostics&&<pre className="twitch-diagnostics">{JSON.stringify({activeChannel,activeSource:selectedSource,parentHost,playerUrl,chat:showChat,configured:data.configured,maskEnabled,mask},null,2)}</pre>}
+   {diagnostics&&<pre className="twitch-diagnostics">{JSON.stringify({activeChannel,activeSource:selectedSource,parentHost,playerUrl,chat:showChat,configured:data.configured,maskEnabled,mask,fullscreenActive,theaterMode},null,2)}</pre>}
   </section>
  </div>
 }
